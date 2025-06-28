@@ -1,602 +1,1026 @@
-// ДИАГНОСТИЧЕСКИЙ КОД ДЛЯ WEB APP
-const tg = window.Telegram?.WebApp;
-let isTelegramWebApp = false;
-let userId = null;
-let isDemo = false;
-let messages = [];
-let debugLogs = [];
-
-// Максимальное логирование
-function log(message, data = null) {
-const timestamp = new Date().toLocaleTimeString();
-const logEntry = `[${timestamp}] ${message}`;
-
-console.log(logEntry, data || '');
-debugLogs.push({ time: timestamp, message, data });
-
-// Ограничиваем логи
-if (debugLogs.length > 50) {
-debugLogs.shift();
-}
-
-updateDebugPanel();
-
-// Критические ошибки показываем как уведомления
-if (message.includes('❌') || message.includes('КРИТИЧЕСКАЯ')) {
-showNotification(message);
-}
-}
-
-// Отправка данных с максимальной диагностикой
-function sendDataToBot(data) {
-log('🚀 НАЧИНАЮ ДИАГНОСТИКУ ОТПРАВКИ');
-
-// Проверка 1: Telegram объект
-if (!window.Telegram) {
-log('❌ КРИТИЧЕСКАЯ: window.Telegram отсутствует!');
-showNotification('❌ Telegram объект недоступен');
-return false;
-}
-log('✅ window.Telegram найден');
-
-// Проверка 2: WebApp объект
-if (!window.Telegram.WebApp) {
-log('❌ КРИТИЧЕСКАЯ: window.Telegram.WebApp отсутствует!');
-showNotification('❌ WebApp недоступен');
-return false;
-}
-log('✅ window.Telegram.WebApp найден');
-
-const tg = window.Telegram.WebApp;
-
-// Проверка 3: Детальная диагностика WebApp
-const diagnostics = {
-platform: tg.platform,
-version: tg.version,
-colorScheme: tg.colorScheme,
-isExpanded: tg.isExpanded,
-viewportHeight: tg.viewportHeight,
-initDataExists: !!tg.initData,
-initDataLength: tg.initData ? tg.initData.length : 0,
-initDataPreview: tg.initData ? tg.initData.substring(0, 50) + '...' : 'НЕТ',
-sendDataType: typeof tg.sendData,
-sendDataExists: typeof tg.sendData === 'function',
-MainButtonExists: !!tg.MainButton,
-themeParamsCount: Object.keys(tg.themeParams || {}).length,
-webAppUser: tg.initDataUnsafe?.user ? 'есть' : 'нет'
-};
-
-log('🔍 ПОЛНАЯ ДИАГНОСТИКА TELEGRAM WEBAPP:', diagnostics);
-
-// Проверка 4: СМЯГЧЕННАЯ ПРОВЕРКА - initData
-if (!tg.initData) {
-log('⚠️ ПРЕДУПРЕЖДЕНИЕ: tg.initData ОТСУТСТВУЕТ!');
-log('⚠️ Возможно Web App открыт через KeyboardButton, где initData может отсутствовать');
-log('🔄 Продолжаем попытку отправки...');
-// НЕ возвращаем false - пробуем отправить
-} else {
-log('✅ tg.initData присутствует');
-}
-
-// Проверка 5: sendData функция
-if (typeof tg.sendData !== 'function') {
-log('❌ КРИТИЧЕСКАЯ: tg.sendData не является функцией!');
-log('❌ Тип tg.sendData:', typeof tg.sendData);
-log('❌ Все методы tg:', Object.getOwnPropertyNames(tg));
-showNotification('❌ sendData недоступен');
-return false;
-}
-log('✅ tg.sendData является функцией');
-
-try {
-// Подготавливаем данные
-const jsonData = JSON.stringify(data);
-log('📊 Данные для отправки:', {
-originalData: data,
-jsonString: jsonData,
-jsonLength: jsonData.length
-});
-
-if (jsonData.length > 4096) {
-log('⚠️ ПРЕДУПРЕЖДЕНИЕ: Данные слишком большие!', jsonData.length);
-}
-
-// Показываем статус
-showNotification('📡 Отправляю данные... ' + jsonData.length + ' символов');
-
-// КРИТИЧЕСКИЙ МОМЕНТ - отправка
-log('🚀 ВЫПОЛНЯЮ tg.sendData()...');
-
-// Устанавливаем обработчики событий ПЕРЕД отправкой
-let eventFired = false;
-
-if (tg.onEvent) {
-tg.onEvent('web_app_data_sent', function() {
-log('✅ СОБЫТИЕ: web_app_data_sent получено!');
-eventFired = true;
-showNotification('✅ Данные отправлены (подтверждено событием)');
-});
-}
-
-// ОТПРАВЛЯЕМ
-tg.sendData(jsonData);
-
-log('✅ tg.sendData() выполнен БЕЗ исключений!');
-
-// Проверяем результат через интервалы
-setTimeout(() => {
-log('⏰ 1 сек: событие fired =', eventFired);
-if (!eventFired) {
-showNotification('⏳ 1 сек - событие не получено, но данные могли отправиться');
-}
-}, 1000);
-
-setTimeout(() => {
-log('⏰ 3 сек: событие fired =', eventFired);
-if (!eventFired) {
-showNotification('⚠️ 3 сек - событие НЕ получено, проверьте бот');
-log('❌ ВОЗМОЖНАЯ ПРОБЛЕМА: Telegram не подтвердил отправку');
-}
-}, 3000);
-
-setTimeout(() => {
-log('⏰ 5 сек: финальная проверка, событие fired =', eventFired);
-if (!eventFired) {
-showNotification('❌ 5 сек - событие не получено, но проверьте бот на всякий случай');
-}
-}, 5000);
-
-return true;
-
-} catch (error) {
-log('❌ ИСКЛЮЧЕНИЕ в sendDataToBot:', {
-message: error.message,
-stack: error.stack,
-name: error.name
-});
-showNotification('❌ Ошибка: ' + error.message);
-return false;
-}
-}
-
-// Супер-тест
-function testConnection() {
-log('🧪 ЗАПУСК СУПЕР-ТЕСТА СОЕДИНЕНИЯ');
-
-const testData = {
-type: 'test_connection',
-user_id: userId,
-timestamp: new Date().toISOString(),
-test_message: '🧪 КРИТИЧЕСКИЙ ТЕСТ ОТ WEB APP',
-webapp_info: {
-url: window.location.href,
-userAgent: navigator.userAgent.substring(0, 100),
-timestamp: Date.now(),
-telegram: {
-version: tg?.version,
-platform: tg?.platform,
-initDataExists: !!tg?.initData,
-sendDataExists: typeof tg?.sendData === 'function'
-}
-}
-};
-
-log('🧪 Отправляю тестовые данные:', testData);
-
-const success = sendDataToBot(testData);
-
-log('🧪 Результат отправки теста:', success);
-
-if (success) {
-showNotification('🧪 Тест отправлен! Ждите ответ в боте...');
-} else {
-showNotification('❌ Тест не удался! См. консоль');
-}
-}
-
-// Инициализация с максимальной диагностикой
-function initTelegramWebApp() {
-log('🚀 НАЧИНАЮ ИНИЦИАЛИЗАЦИЮ WEBAPP');
-
-if (!tg) {
-log('❌ Telegram Web App недоступен');
-return false;
-}
-
-log('✅ Telegram Web App найден');
-
-try {
-// Регистрируем ВСЕ возможные события
-if (tg.onEvent) {
-tg.onEvent('web_app_data_sent', () => {
-log('📡 СОБЫТИЕ: web_app_data_sent');
-showNotification('✅ Данные отправлены!');
-});
-
-tg.onEvent('theme_changed', () => {
-log('🎨 СОБЫТИЕ: theme_changed');
-});
-
-tg.onEvent('viewport_changed', () => {
-log('📱 СОБЫТИЕ: viewport_changed');
-});
-}
-
-// Инициализация
-tg.ready();
-log('✅ tg.ready() выполнен');
-
-tg.expand();
-log('✅ tg.expand() выполнен');
-
-tg.disableVerticalSwipes?.();
-log('✅ tg.disableVerticalSwipes() выполнен');
-
-// Получаем user ID
-if (tg.initDataUnsafe?.user?.id) {
-userId = tg.initDataUnsafe.user.id.toString();
-log('✅ User ID из initDataUnsafe:', userId);
-}
-
-// Из URL параметров
-const urlParams = new URLSearchParams(window.location.search);
-const urlUserId = urlParams.get('user_id');
-if (urlUserId) {
-userId = urlUserId;
-log('✅ User ID из URL:', userId);
-}
-
-// Финальная диагностика
-log('📊 ИТОГОВАЯ ДИАГНОСТИКА:', {
-userId: userId,
-initData: tg.initData ? 'ЕСТЬ' : 'НЕТ!',
-sendData: typeof tg.sendData === 'function' ? 'ДОСТУПЕН' : 'НЕТ!'
-});
-
-isTelegramWebApp = true;
-return true;
-
-} catch (error) {
-log('❌ Ошибка инициализации:', error);
-return false;
-}
-}
-
-// Инициализация приложения
-function initializeApp() {
-log('🚀 ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ');
-
-// Получаем userId из URL
-const urlParams = new URLSearchParams(window.location.search);
-const urlUserId = urlParams.get('user_id');
-if (urlUserId) {
-userId = urlUserId;
-log('✅ User ID из URL:', userId);
-}
-
-// Инициализируем Telegram
-const telegramOk = initTelegramWebApp();
-
-log('🔍 ПРОВЕРКА РЕЖИМА:', {
-telegramOk: telegramOk,
-userId: userId,
-hasTelegram: !!window.Telegram?.WebApp,
-hasInitData: !!window.Telegram?.WebApp?.initData,
-url: window.location.href
-});
-
-// ИЗМЕНЕННАЯ ЛОГИКА: более мягкие условия
-if (userId && window.Telegram?.WebApp) {
-// Если есть userId и Telegram WebApp объект - пробуем режим бота
-isDemo = false;
-log('✅ РЕЖИМ: ИНТЕГРАЦИЯ С БОТОМ (по userId + WebApp)');
-updateStatusIndicator('БОТ', 'status-bot');
-
-// Отправляем ready сигнал
-setTimeout(() => {
-sendReadySignal();
-}, 1000);
-
-} else if (window.Telegram?.WebApp) {
-// Если есть только WebApp но нет userId - пробуем получить из Telegram
-const telegramUserId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-if (telegramUserId) {
-userId = telegramUserId.toString();
-isDemo = false;
-log('✅ РЕЖИМ: ИНТЕГРАЦИЯ С БОТОМ (по Telegram userId)');
-updateStatusIndicator('БОТ', 'status-bot');
-
-setTimeout(() => {
-sendReadySignal();
-}, 1000);
-} else {
-isDemo = true;
-log('⚠️ РЕЖИМ: ДЕМО (нет userId)');
-updateStatusIndicator('ДЕМО', 'status-demo');
-showNotification('📱 Демо режим: нет User ID');
-}
-} else {
-isDemo = true;
-log('⚠️ РЕЖИМ: ДЕМО (нет Telegram WebApp)');
-updateStatusIndicator('ДЕМО', 'status-demo');
-showNotification('📱 Демо режим: откройте через Telegram бот');
-}
-
-loadInitialData();
-}
-
-// Отправка ready сигнала
-function sendReadySignal() {
-const readyData = {
-type: 'app_ready',
-user_id: userId,
-timestamp: new Date().toISOString(),
-app_version: '2.0.0-debug'
-};
-
-log('📡 Отправляю ready сигнал:', readyData);
-sendDataToBot(readyData);
-}
-
-// Отправка сообщения
-async function sendMessage() {
-const input = document.getElementById('messageInput');
-const text = input.value.trim();
-
-if (!text) {
-showNotification('⚠️ Введите сообщение');
-return;
-}
-
-log('📝 Отправка сообщения:', text);
-
-// Добавляем сообщение пользователя
-const userMessage = {
-id: Date.now().toString(),
-sender: 'user',
-text: text,
-timestamp: new Date().toISOString()
-};
-
-addMessage(userMessage);
-input.value = '';
-autoResize(input);
-showTypingIndicator();
-
-try {
-if (!isDemo) {
-const messageData = {
-type: 'send_message',
-user_id: userId,
-message: text,
-timestamp: new Date().toISOString()
-};
-
-log('📤 Отправляю сообщение боту:', messageData);
-const success = sendDataToBot(messageData);
-
-if (success) {
-showNotification('📡 Сообщение отправлено боту!');
-
-setTimeout(() => {
-const statusMessage = {
-id: (Date.now() + 1).toString(),
-sender: 'assistant',
-text: '⏳ Запрос отправлен боту. Ответ появится в Telegram чате.',
-timestamp: new Date().toISOString()
-};
-addMessage(statusMessage);
-hideTypingIndicator();
-}, 2000);
-
-} else {
-throw new Error('Не удалось отправить');
-}
-} else {
-// Демо ответ
-setTimeout(() => {
-const demoMessage = {
-id: (Date.now() + 1).toString(),
-sender: 'assistant',
-text: '🤖 Демо ответ. Для реальной работы откройте через Telegram бот!',
-timestamp: new Date().toISOString()
-};
-addMessage(demoMessage);
-hideTypingIndicator();
-}, 1500);
-}
-
-} catch (error) {
-log('❌ Ошибка отправки сообщения:', error);
-hideTypingIndicator();
-
-const errorMessage = {
-id: (Date.now() + 1).toString(),
-sender: 'assistant',
-text: '😔 Ошибка отправки. Проверьте подключение.',
-timestamp: new Date().toISOString()
-};
-addMessage(errorMessage);
-showNotification('❌ Ошибка отправки');
-}
-}
-
-// Остальные функции (без изменений)
-function updateStatusIndicator(text, className) {
-const indicator = document.getElementById('statusIndicator');
-indicator.textContent = text;
-indicator.className = `status-indicator ${className}`;
-}
-
-function loadInitialData() {
-if (isDemo) {
-const welcomeMessage = {
-id: 'welcome',
-sender: 'assistant',
-text: '👋 Демо режим. Для полной функциональности откройте через Telegram бот!',
-timestamp: new Date().toISOString()
-};
-addMessage(welcomeMessage);
-}
-}
-
-function addMessage(message) {
-messages.push(message);
-renderMessages();
-}
-
-function renderMessages() {
-const container = document.getElementById('messagesContainer');
-
-if (messages.length === 0) {
-container.innerHTML = `
-<div class="empty-state">
-    <div class="empty-icon">💬</div>
-    <div class="empty-title">Начните общение</div>
-    <div class="empty-description">Отправьте сообщение Gemini AI</div>
-</div>
-`;
-return;
-}
-
-container.innerHTML = '';
-messages.forEach(message => {
-const messageElement = createMessageElement(message);
-container.appendChild(messageElement);
-});
-container.scrollTop = container.scrollHeight;
-}
-
-function createMessageElement(message) {
-const messageDiv = document.createElement('div');
-messageDiv.className = `message ${message.sender}`;
-
-const avatar = message.sender === 'user' ? '👤' : '🤖';
-const time = formatTime(message.timestamp);
-
-messageDiv.innerHTML = `
-<div class="message-avatar">${avatar}</div>
-<div class="message-content">
-    <div class="message-text">${message.text}</div>
-    <div class="message-time">${time}</div>
-</div>
-`;
-
-return messageDiv;
-}
-
-function showTypingIndicator() {
-const container = document.getElementById('messagesContainer');
-const existing = document.getElementById('typingIndicator');
-if (existing) existing.remove();
-
-const indicator = document.createElement('div');
-indicator.className = 'message assistant';
-indicator.id = 'typingIndicator';
-indicator.innerHTML = `
-<div class="message-avatar">🤖</div>
-<div class="typing-indicator">
-    <span>Обрабатываю...</span>
-    <div class="typing-dots">
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gemini AI Assistant</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: var(--tg-theme-bg-color, #1a1a1a);
+            --bg-secondary: var(--tg-theme-secondary-bg-color, #2d2d2d);
+            --text-primary: var(--tg-theme-text-color, #ffffff);
+            --text-hint: var(--tg-theme-hint-color, #666666);
+            --button-color: var(--tg-theme-button-color, #ff6b35);
+            --button-text: var(--tg-theme-button-text-color, #ffffff);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-height: 100vh;
+        }
+
+        .app-header {
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid #404040;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .app-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .status-bot {
+            background: #4caf50;
+            color: white;
+        }
+
+        .status-demo {
+            background: #ff9800;
+            color: white;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-btn {
+            padding: 6px 10px;
+            background: #3a3a3a;
+            border: 1px solid #404040;
+            border-radius: 6px;
+            color: var(--text-hint);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .header-btn:hover, .header-btn.active {
+            background: var(--button-color);
+            color: var(--button-text);
+            border-color: var(--button-color);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .current-chat-info {
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid #404040;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .current-chat-name {
+            font-size: 14px;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .message {
+            display: flex;
+            gap: 8px;
+            max-width: 85%;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            margin-left: auto;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--button-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .message-content {
+            background: var(--bg-secondary);
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #404040;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .message.user .message-content {
+            background: var(--button-color);
+            color: var(--button-text);
+            border-color: var(--button-color);
+        }
+
+        .message-text {
+            line-height: 1.4;
+            font-size: 13px;
+            word-wrap: break-word;
+        }
+
+        .message-time {
+            font-size: 10px;
+            color: var(--text-hint);
+            margin-top: 6px;
+        }
+
+        .message.user .message-time {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .input-area {
+            padding: 12px;
+            border-top: 1px solid #404040;
+            background: var(--bg-secondary);
+            flex-shrink: 0;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .message-input {
+            width: 100%;
+            min-height: 36px;
+            max-height: 80px;
+            padding: 8px 12px 8px 32px;
+            background: var(--bg-primary);
+            border: 1px solid #404040;
+            border-radius: 18px;
+            color: var(--text-primary);
+            font-size: 13px;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .message-input:focus {
+            border-color: var(--button-color);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-hint);
+            font-size: 14px;
+        }
+
+        .send-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--button-color);
+            border: none;
+            border-radius: 50%;
+            color: var(--button-text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+            font-size: 14px;
+        }
+
+        .send-btn:active {
+            opacity: 0.8;
+        }
+
+        .send-btn:disabled {
+            background: #3a3a3a;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            color: var(--text-hint);
+            font-size: 12px;
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            width: fit-content;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 2px;
+        }
+
+        .typing-dot {
+            width: 4px;
+            height: 4px;
+            background: var(--text-hint);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+
+        .notification {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--button-color);
+            color: var(--button-text);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 1001;
+            animation: notificationSlide 0.3s ease;
+            max-width: calc(100% - 32px);
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes notificationSlide {
+            from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-hint);
+            text-align: center;
+            padding: 32px 16px;
+        }
+
+        .empty-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .empty-description {
+            font-size: 12px;
+            opacity: 0.7;
+            line-height: 1.4;
+        }
+
+        .debug-panel {
+            position: fixed;
+            bottom: 50px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            z-index: 999;
+            max-width: 200px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <!-- Заголовок -->
+    <div class="app-header">
+        <div class="app-title">
+            <span>🤖</span>
+            <span id="currentChatTitle">Gemini AI</span>
+            <span class="status-indicator" id="statusIndicator">Загрузка...</span>
+        </div>
+        <div class="header-actions">
+            <button class="header-btn" onclick="showDebugInfo()">🔍</button>
+            <button class="header-btn" onclick="testConnection()">🧪</button>
+        </div>
     </div>
+
+    <!-- Основная область -->
+    <div class="main-content">
+        <!-- Информация о чате -->
+        <div class="current-chat-info">
+            <div class="current-chat-name" id="chatTitle">Основной чат</div>
+        </div>
+
+        <!-- Сообщения -->
+        <div class="messages-container" id="messagesContainer">
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <div class="empty-title">Добро пожаловать!</div>
+                <div class="empty-description">
+                    Начните общение с Gemini AI
+                </div>
+            </div>
+        </div>
+
+        <!-- Область ввода -->
+        <div class="input-area">
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <span class="input-icon">💭</span>
+                    <textarea
+                            class="message-input"
+                            id="messageInput"
+                            placeholder="Сообщение AI..."
+                            rows="1"
+                            onkeypress="handleKeyPress(event)"
+                            oninput="autoResize(this)"
+                    ></textarea>
+                </div>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                    <span>📤</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug панель -->
+    <div class="debug-panel" id="debugPanel" style="display: none;"></div>
 </div>
-`;
 
-container.appendChild(indicator);
-container.scrollTop = container.scrollHeight;
-}
+<script>
+    // ДИАГНОСТИЧЕСКИЙ КОД ДЛЯ WEB APP
+    const tg = window.Telegram?.WebApp;
+    let isTelegramWebApp = false;
+    let userId = null;
+    let isDemo = false;
+    let messages = [];
+    let debugLogs = [];
 
-function hideTypingIndicator() {
-const indicator = document.getElementById('typingIndicator');
-if (indicator) indicator.remove();
-}
+    // Максимальное логирование
+    function log(message, data = null) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = `[${timestamp}] ${message}`;
 
-function showNotification(message) {
-document.querySelectorAll('.notification').forEach(notif => notif.remove());
+        console.log(logEntry, data || '');
+        debugLogs.push({ time: timestamp, message, data });
 
-const notification = document.createElement('div');
-notification.className = 'notification';
-notification.textContent = message;
-document.body.appendChild(notification);
+        // Ограничиваем логи
+        if (debugLogs.length > 50) {
+            debugLogs.shift();
+        }
 
-setTimeout(() => {
-if (notification.parentNode) {
-notification.remove();
-}
-}, 4000);
-}
+        updateDebugPanel();
 
-function showDebugInfo() {
-const debugInfo = {
-isTelegramWebApp,
-userId,
-isDemo,
-messagesCount: messages.length,
-telegramVersion: tg?.version || 'N/A',
-platform: tg?.platform || 'N/A',
-initData: tg?.initData ? 'ЕСТЬ' : 'НЕТ',
-sendDataAvailable: typeof tg?.sendData === 'function'
-};
+        // Критические ошибки показываем как уведомления
+        if (message.includes('❌') || message.includes('КРИТИЧЕСКАЯ')) {
+            showNotification(message);
+        }
+    }
 
-log('🔍 Debug Info:', debugInfo);
-alert('Debug:\n' + JSON.stringify(debugInfo, null, 2));
-}
+    // Отправка данных с максимальной диагностикой
+    function sendDataToBot(data) {
+        log('🚀 НАЧИНАЮ ДИАГНОСТИКУ ОТПРАВКИ');
 
-function updateDebugPanel() {
-const panel = document.getElementById('debugPanel');
-const recentLogs = debugLogs.slice(-8);
+        // Проверка 1: Telegram объект
+        if (!window.Telegram) {
+            log('❌ КРИТИЧЕСКАЯ: window.Telegram отсутствует!');
+            showNotification('❌ Telegram объект недоступен');
+            return false;
+        }
+        log('✅ window.Telegram найден');
 
-panel.innerHTML = recentLogs.map(log =>
-`${log.time}: ${log.message}`
-).join('<br>');
-}
+        // Проверка 2: WebApp объект
+        if (!window.Telegram.WebApp) {
+            log('❌ КРИТИЧЕСКАЯ: window.Telegram.WebApp отсутствует!');
+            showNotification('❌ WebApp недоступен');
+            return false;
+        }
+        log('✅ window.Telegram.WebApp найден');
 
-function formatTime(isoString) {
-const date = new Date(isoString);
-return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-}
+        const tg = window.Telegram.WebApp;
 
-function autoResize(textarea) {
-textarea.style.height = 'auto';
-textarea.style.height = Math.min(textarea.scrollHeight, 80) + 'px';
-}
+        // Проверка 3: Детальная диагностика WebApp
+        const diagnostics = {
+            platform: tg.platform,
+            version: tg.version,
+            colorScheme: tg.colorScheme,
+            isExpanded: tg.isExpanded,
+            viewportHeight: tg.viewportHeight,
+            initDataExists: !!tg.initData,
+            initDataLength: tg.initData ? tg.initData.length : 0,
+            initDataPreview: tg.initData ? tg.initData.substring(0, 50) + '...' : 'НЕТ',
+            sendDataType: typeof tg.sendData,
+            sendDataExists: typeof tg.sendData === 'function',
+            MainButtonExists: !!tg.MainButton,
+            themeParamsCount: Object.keys(tg.themeParams || {}).length,
+            webAppUser: tg.initDataUnsafe?.user ? 'есть' : 'нет'
+        };
 
-function handleKeyPress(event) {
-if (event.key === 'Enter' && !event.shiftKey) {
-event.preventDefault();
-sendMessage();
-}
-}
+        log('🔍 ПОЛНАЯ ДИАГНОСТИКА TELEGRAM WEBAPP:', diagnostics);
 
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-log('📋 DOM загружен, запускаю инициализацию');
-initializeApp();
+        // Проверка 4: СМЯГЧЕННАЯ ПРОВЕРКА - initData
+        if (!tg.initData) {
+            log('⚠️ ПРЕДУПРЕЖДЕНИЕ: tg.initData ОТСУТСТВУЕТ!');
+            log('⚠️ Возможно Web App открыт через KeyboardButton, где initData может отсутствовать');
+            log('🔄 Продолжаем попытку отправки...');
+            // НЕ возвращаем false - пробуем отправить
+        } else {
+            log('✅ tg.initData присутствует');
+        }
 
-// Показываем debug панель через 2 секунды
-setTimeout(() => {
-document.getElementById('debugPanel').style.display = 'block';
-}, 2000);
-});
+        // Проверка 5: sendData функция
+        if (typeof tg.sendData !== 'function') {
+            log('❌ КРИТИЧЕСКАЯ: tg.sendData не является функцией!');
+            log('❌ Тип tg.sendData:', typeof tg.sendData);
+            log('❌ Все методы tg:', Object.getOwnPropertyNames(tg));
+            showNotification('❌ sendData недоступен');
+            return false;
+        }
+        log('✅ tg.sendData является функцией');
 
-// Обработка событий Telegram
-if (tg) {
-tg.onEvent?.('web_app_data_sent', function() {
-log('✅ ГЛОБАЛЬНОЕ СОБЫТИЕ: web_app_data_sent');
-showNotification('✅ Данные отправлены (глобальное событие)');
-});
-}
+        try {
+            // Подготавливаем данные
+            const jsonData = JSON.stringify(data);
+            log('📊 Данные для отправки:', {
+                originalData: data,
+                jsonString: jsonData,
+                jsonLength: jsonData.length
+            });
 
-// Глобальная обработка ошибок
-window.addEventListener('error', function(event) {
-log('❌ Глобальная ошибка:', event.error);
-});
+            if (jsonData.length > 4096) {
+                log('⚠️ ПРЕДУПРЕЖДЕНИЕ: Данные слишком большие!', jsonData.length);
+            }
 
-window.addEventListener('unhandledrejection', function(event) {
-log('❌ Отклонение промиса:', event.reason);
-});
+            // Показываем статус
+            showNotification('📡 Отправляю данные... ' + jsonData.length + ' символов');
 
-log('🚀 Web App скрипт полностью загружен');
+            // КРИТИЧЕСКИЙ МОМЕНТ - отправка
+            log('🚀 ВЫПОЛНЯЮ tg.sendData()...');
+
+            // Устанавливаем обработчики событий ПЕРЕД отправкой
+            let eventFired = false;
+
+            if (tg.onEvent) {
+                tg.onEvent('web_app_data_sent', function() {
+                    log('✅ СОБЫТИЕ: web_app_data_sent получено!');
+                    eventFired = true;
+                    showNotification('✅ Данные отправлены (подтверждено событием)');
+                });
+            }
+
+            // ОТПРАВЛЯЕМ
+            tg.sendData(jsonData);
+
+            log('✅ tg.sendData() выполнен БЕЗ исключений!');
+
+            // Проверяем результат через интервалы
+            setTimeout(() => {
+                log('⏰ 1 сек: событие fired =', eventFired);
+                if (!eventFired) {
+                    showNotification('⏳ 1 сек - событие не получено, но данные могли отправиться');
+                }
+            }, 1000);
+
+            setTimeout(() => {
+                log('⏰ 3 сек: событие fired =', eventFired);
+                if (!eventFired) {
+                    showNotification('⚠️ 3 сек - событие НЕ получено, проверьте бот');
+                    log('❌ ВОЗМОЖНАЯ ПРОБЛЕМА: Telegram не подтвердил отправку');
+                }
+            }, 3000);
+
+            setTimeout(() => {
+                log('⏰ 5 сек: финальная проверка, событие fired =', eventFired);
+                if (!eventFired) {
+                    showNotification('❌ 5 сек - событие не получено, но проверьте бот на всякий случай');
+                }
+            }, 5000);
+
+            return true;
+
+        } catch (error) {
+            log('❌ ИСКЛЮЧЕНИЕ в sendDataToBot:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+            showNotification('❌ Ошибка: ' + error.message);
+            return false;
+        }
+    }
+
+    // Супер-тест
+    function testConnection() {
+        log('🧪 ЗАПУСК СУПЕР-ТЕСТА СОЕДИНЕНИЯ');
+
+        const testData = {
+            type: 'test_connection',
+            user_id: userId,
+            timestamp: new Date().toISOString(),
+            test_message: '🧪 КРИТИЧЕСКИЙ ТЕСТ ОТ WEB APP',
+            webapp_info: {
+                url: window.location.href,
+                userAgent: navigator.userAgent.substring(0, 100),
+                timestamp: Date.now(),
+                telegram: {
+                    version: tg?.version,
+                    platform: tg?.platform,
+                    initDataExists: !!tg?.initData,
+                    sendDataExists: typeof tg?.sendData === 'function'
+                }
+            }
+        };
+
+        log('🧪 Отправляю тестовые данные:', testData);
+
+        const success = sendDataToBot(testData);
+
+        log('🧪 Результат отправки теста:', success);
+
+        if (success) {
+            showNotification('🧪 Тест отправлен! Ждите ответ в боте...');
+        } else {
+            showNotification('❌ Тест не удался! См. консоль');
+        }
+    }
+
+    // Инициализация с максимальной диагностикой
+    function initTelegramWebApp() {
+        log('🚀 НАЧИНАЮ ИНИЦИАЛИЗАЦИЮ WEBAPP');
+
+        if (!tg) {
+            log('❌ Telegram Web App недоступен');
+            return false;
+        }
+
+        log('✅ Telegram Web App найден');
+
+        try {
+            // Регистрируем ВСЕ возможные события
+            if (tg.onEvent) {
+                tg.onEvent('web_app_data_sent', () => {
+                    log('📡 СОБЫТИЕ: web_app_data_sent');
+                    showNotification('✅ Данные отправлены!');
+                });
+
+                tg.onEvent('theme_changed', () => {
+                    log('🎨 СОБЫТИЕ: theme_changed');
+                });
+
+                tg.onEvent('viewport_changed', () => {
+                    log('📱 СОБЫТИЕ: viewport_changed');
+                });
+            }
+
+            // Инициализация
+            tg.ready();
+            log('✅ tg.ready() выполнен');
+
+            tg.expand();
+            log('✅ tg.expand() выполнен');
+
+            tg.disableVerticalSwipes?.();
+            log('✅ tg.disableVerticalSwipes() выполнен');
+
+            // Получаем user ID
+            if (tg.initDataUnsafe?.user?.id) {
+                userId = tg.initDataUnsafe.user.id.toString();
+                log('✅ User ID из initDataUnsafe:', userId);
+            }
+
+            // Из URL параметров
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlUserId = urlParams.get('user_id');
+            if (urlUserId) {
+                userId = urlUserId;
+                log('✅ User ID из URL:', userId);
+            }
+
+            // Финальная диагностика
+            log('📊 ИТОГОВАЯ ДИАГНОСТИКА:', {
+                userId: userId,
+                initData: tg.initData ? 'ЕСТЬ' : 'НЕТ!',
+                sendData: typeof tg.sendData === 'function' ? 'ДОСТУПЕН' : 'НЕТ!'
+            });
+
+            isTelegramWebApp = true;
+            return true;
+
+        } catch (error) {
+            log('❌ Ошибка инициализации:', error);
+            return false;
+        }
+    }
+
+    // Инициализация приложения
+    function initializeApp() {
+        log('🚀 ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ');
+
+        // Получаем userId из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlUserId = urlParams.get('user_id');
+        if (urlUserId) {
+            userId = urlUserId;
+            log('✅ User ID из URL:', userId);
+        }
+
+        // Инициализируем Telegram
+        const telegramOk = initTelegramWebApp();
+
+        log('🔍 ПРОВЕРКА РЕЖИМА:', {
+            telegramOk: telegramOk,
+            userId: userId,
+            hasTelegram: !!window.Telegram?.WebApp,
+            hasInitData: !!window.Telegram?.WebApp?.initData,
+            url: window.location.href
+        });
+
+        // ИЗМЕНЕННАЯ ЛОГИКА: более мягкие условия
+        if (userId && window.Telegram?.WebApp) {
+            // Если есть userId и Telegram WebApp объект - пробуем режим бота
+            isDemo = false;
+            log('✅ РЕЖИМ: ИНТЕГРАЦИЯ С БОТОМ (по userId + WebApp)');
+            updateStatusIndicator('БОТ', 'status-bot');
+
+            // Отправляем ready сигнал
+            setTimeout(() => {
+                sendReadySignal();
+            }, 1000);
+
+        } else if (window.Telegram?.WebApp) {
+            // Если есть только WebApp но нет userId - пробуем получить из Telegram
+            const telegramUserId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+            if (telegramUserId) {
+                userId = telegramUserId.toString();
+                isDemo = false;
+                log('✅ РЕЖИМ: ИНТЕГРАЦИЯ С БОТОМ (по Telegram userId)');
+                updateStatusIndicator('БОТ', 'status-bot');
+
+                setTimeout(() => {
+                    sendReadySignal();
+                }, 1000);
+            } else {
+                isDemo = true;
+                log('⚠️ РЕЖИМ: ДЕМО (нет userId)');
+                updateStatusIndicator('ДЕМО', 'status-demo');
+                showNotification('📱 Демо режим: нет User ID');
+            }
+        } else {
+            isDemo = true;
+            log('⚠️ РЕЖИМ: ДЕМО (нет Telegram WebApp)');
+            updateStatusIndicator('ДЕМО', 'status-demo');
+            showNotification('📱 Демо режим: откройте через Telegram бот');
+        }
+
+        loadInitialData();
+    }
+
+    // Отправка ready сигнала
+    function sendReadySignal() {
+        const readyData = {
+            type: 'app_ready',
+            user_id: userId,
+            timestamp: new Date().toISOString(),
+            app_version: '2.0.0-debug'
+        };
+
+        log('📡 Отправляю ready сигнал:', readyData);
+        sendDataToBot(readyData);
+    }
+
+    // Отправка сообщения
+    async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const text = input.value.trim();
+
+        if (!text) {
+            showNotification('⚠️ Введите сообщение');
+            return;
+        }
+
+        log('📝 Отправка сообщения:', text);
+
+        // Добавляем сообщение пользователя
+        const userMessage = {
+            id: Date.now().toString(),
+            sender: 'user',
+            text: text,
+            timestamp: new Date().toISOString()
+        };
+
+        addMessage(userMessage);
+        input.value = '';
+        autoResize(input);
+        showTypingIndicator();
+
+        try {
+            if (!isDemo) {
+                const messageData = {
+                    type: 'send_message',
+                    user_id: userId,
+                    message: text,
+                    timestamp: new Date().toISOString()
+                };
+
+                log('📤 Отправляю сообщение боту:', messageData);
+                const success = sendDataToBot(messageData);
+
+                if (success) {
+                    showNotification('📡 Сообщение отправлено боту!');
+
+                    setTimeout(() => {
+                        const statusMessage = {
+                            id: (Date.now() + 1).toString(),
+                            sender: 'assistant',
+                            text: '⏳ Запрос отправлен боту. Ответ появится в Telegram чате.',
+                            timestamp: new Date().toISOString()
+                        };
+                        addMessage(statusMessage);
+                        hideTypingIndicator();
+                    }, 2000);
+
+                } else {
+                    throw new Error('Не удалось отправить');
+                }
+            } else {
+                // Демо ответ
+                setTimeout(() => {
+                    const demoMessage = {
+                        id: (Date.now() + 1).toString(),
+                        sender: 'assistant',
+                        text: '🤖 Демо ответ. Для реальной работы откройте через Telegram бот!',
+                        timestamp: new Date().toISOString()
+                    };
+                    addMessage(demoMessage);
+                    hideTypingIndicator();
+                }, 1500);
+            }
+
+        } catch (error) {
+            log('❌ Ошибка отправки сообщения:', error);
+            hideTypingIndicator();
+
+            const errorMessage = {
+                id: (Date.now() + 1).toString(),
+                sender: 'assistant',
+                text: '😔 Ошибка отправки. Проверьте подключение.',
+                timestamp: new Date().toISOString()
+            };
+            addMessage(errorMessage);
+            showNotification('❌ Ошибка отправки');
+        }
+    }
+
+    // Остальные функции
+    function updateStatusIndicator(text, className) {
+        const indicator = document.getElementById('statusIndicator');
+        indicator.textContent = text;
+        indicator.className = `status-indicator ${className}`;
+    }
+
+    function loadInitialData() {
+        if (isDemo) {
+            const welcomeMessage = {
+                id: 'welcome',
+                sender: 'assistant',
+                text: '👋 Демо режим. Для полной функциональности откройте через Telegram бот!',
+                timestamp: new Date().toISOString()
+            };
+            addMessage(welcomeMessage);
+        }
+    }
+
+    function addMessage(message) {
+        messages.push(message);
+        renderMessages();
+    }
+
+    function renderMessages() {
+        const container = document.getElementById('messagesContainer');
+
+        if (messages.length === 0) {
+            container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <div class="empty-title">Начните общение</div>
+                <div class="empty-description">Отправьте сообщение Gemini AI</div>
+            </div>
+        `;
+            return;
+        }
+
+        container.innerHTML = '';
+        messages.forEach(message => {
+            const messageElement = createMessageElement(message);
+            container.appendChild(messageElement);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function createMessageElement(message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${message.sender}`;
+
+        const avatar = message.sender === 'user' ? '👤' : '🤖';
+        const time = formatTime(message.timestamp);
+
+        messageDiv.innerHTML = `
+        <div class="message-avatar">${avatar}</div>
+        <div class="message-content">
+            <div class="message-text">${message.text}</div>
+            <div class="message-time">${time}</div>
+        </div>
+    `;
+
+        return messageDiv;
+    }
+
+    function showTypingIndicator() {
+        const container = document.getElementById('messagesContainer');
+        const existing = document.getElementById('typingIndicator');
+        if (existing) existing.remove();
+
+        const indicator = document.createElement('div');
+        indicator.className = 'message assistant';
+        indicator.id = 'typingIndicator';
+        indicator.innerHTML = `
+        <div class="message-avatar">🤖</div>
+        <div class="typing-indicator">
+            <span>Обрабатываю...</span>
+            <div class="typing-dots">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            </div>
+        </div>
+    `;
+
+        container.appendChild(indicator);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+        const indicator = document.getElementById('typingIndicator');
+        if (indicator) indicator.remove();
+    }
+
+    function showNotification(message) {
+        document.querySelectorAll('.notification').forEach(notif => notif.remove());
+
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 4000);
+    }
+
+    function showDebugInfo() {
+        const debugInfo = {
+            isTelegramWebApp,
+            userId,
+            isDemo,
+            messagesCount: messages.length,
+            telegramVersion: tg?.version || 'N/A',
+            platform: tg?.platform || 'N/A',
+            initData: tg?.initData ? 'ЕСТЬ' : 'НЕТ',
+            sendDataAvailable: typeof tg?.sendData === 'function'
+        };
+
+        log('🔍 Debug Info:', debugInfo);
+        alert('Debug:\n' + JSON.stringify(debugInfo, null, 2));
+    }
+
+    function updateDebugPanel() {
+        const panel = document.getElementById('debugPanel');
+        const recentLogs = debugLogs.slice(-8);
+
+        panel.innerHTML = recentLogs.map(log =>
+            `${log.time}: ${log.message}`
+        ).join('<br>');
+    }
+
+    function formatTime(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 80) + 'px';
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    // Инициализация при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        log('📋 DOM загружен, запускаю инициализацию');
+        initializeApp();
+
+        // Показываем debug панель через 2 секунды
+        setTimeout(() => {
+            document.getElementById('debugPanel').style.display = 'block';
+        }, 2000);
+    });
+
+    // Обработка событий Telegram
+    if (tg) {
+        tg.onEvent?.('web_app_data_sent', function() {
+            log('✅ ГЛОБАЛЬНОЕ СОБЫТИЕ: web_app_data_sent');
+            showNotification('✅ Данные отправлены (глобальное событие)');
+        });
+    }
+
+    // Глобальная обработка ошибок
+    window.addEventListener('error', function(event) {
+        log('❌ Глобальная ошибка:', event.error);
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+        log('❌ Отклонение промиса:', event.reason);
+    });
+
+    log('🚀 Web App скрипт полностью загружен');
+</script>
+</body>
+</html>
