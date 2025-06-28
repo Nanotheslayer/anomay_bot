@@ -724,9 +724,12 @@
     // Telegram Web App инициализация
     const tg = window.Telegram?.WebApp;
     let isTelegramWebApp = false;
+    let userId = null;
+    let isDemo = false;
 
     // Проверяем доступность Telegram Web App
     if (tg) {
+        console.log('Telegram Web App обнаружен');
         tg.ready();
         tg.expand();
         isTelegramWebApp = true;
@@ -739,6 +742,10 @@
         // Настройка цветов заголовка
         tg.setHeaderColor('#1a1a1a');
         tg.setBackgroundColor('#1a1a1a');
+
+        console.log('Telegram Web App инициализирован');
+    } else {
+        console.log('Telegram Web App недоступен');
     }
 
     // Состояние приложения
@@ -750,24 +757,70 @@
 
     // Инициализация
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('📋 DOM загружен, начинаю инициализацию');
         initializeApp();
         setupEventListeners();
+
+        // Добавляем индикатор режима в интерфейс
+        setTimeout(() => {
+            const indicator = document.createElement('div');
+            indicator.style.position = 'fixed';
+            indicator.style.bottom = '10px';
+            indicator.style.right = '10px';
+            indicator.style.padding = '4px 8px';
+            indicator.style.background = isDemo ? '#ff9800' : '#4caf50';
+            indicator.style.color = 'white';
+            indicator.style.borderRadius = '4px';
+            indicator.style.fontSize = '10px';
+            indicator.style.zIndex = '1000';
+            indicator.textContent = isDemo ? 'ДЕМО' : 'БОТ';
+            document.body.appendChild(indicator);
+        }, 1000);
     });
+
+    // Логирование для отладки
+    console.log('📱 Gemini AI Assistant - Версия с полной интеграцией');
+    console.log('🔗 Ожидаю параметр user_id в URL для активации бота');
+    console.log('🤖 Поддержка Telegram Web App:', !!window.Telegram?.WebApp);
 
     // Основная функция инициализации
     function initializeApp() {
+        console.log('🚀 Начинаю инициализацию приложения');
+
+        // Получаем userId из URL параметров
         const urlParams = new URLSearchParams(window.location.search);
         userId = urlParams.get('user_id');
 
-        console.log('Инициализация приложения. User ID:', userId);
+        console.log('User ID из URL:', userId);
+        console.log('Telegram Web App доступен:', isTelegramWebApp);
 
+        // Определяем режим работы
         if (userId && isTelegramWebApp) {
+            isDemo = false;
+            console.log('✅ Режим: ИНТЕГРАЦИЯ С БОТОМ');
             loadUserData();
-            requestUserDataFromBot();
+            syncWithBot(); // Синхронизируемся с ботом
         } else {
             isDemo = true;
+            console.log('⚠️ Режим: ДЕМО (userId=' + userId + ', WebApp=' + isTelegramWebApp + ')');
             loadChatsDemo();
+            showNotification('📱 Демо режим. Для полной функциональности откройте через бот.');
         }
+    }
+
+    // Синхронизация с ботом
+    function syncWithBot() {
+        if (!userId || !isTelegramWebApp) return;
+
+        console.log('🔄 Синхронизация с ботом...');
+
+        const syncData = {
+            type: 'sync_chats',
+            user_id: userId,
+            timestamp: new Date().toISOString()
+        };
+
+        sendDataToBot(syncData);
     }
 
     // Переключение панели чатов
@@ -869,6 +922,12 @@
                     throw new Error('Telegram Web App недоступен');
                 }
 
+                if (!userId) {
+                    throw new Error('User ID не найден');
+                }
+
+                console.log('📤 Отправляю сообщение боту:', text);
+
                 const messageData = {
                     type: 'send_message',
                     user_id: userId,
@@ -877,16 +936,20 @@
                     timestamp: new Date().toISOString()
                 };
 
+                // Отправляем данные боту
                 tg.sendData(JSON.stringify(messageData));
-                showNotification('✅ Отправлено в бот!');
 
+                console.log('✅ Данные отправлены боту');
+                showNotification('📤 Отправлено боту!');
+
+                // Возвращаем подтверждение отправки
                 resolve({
-                    text: '✅ Сообщение отправлено в бот. Ответ придет в Telegram.',
+                    text: '📤 Сообщение отправлено боту. Ответ придет в Telegram чат.',
                     sent_to_bot: true
                 });
 
             } catch (error) {
-                console.error('Ошибка отправки сообщения боту:', error);
+                console.error('❌ Ошибка отправки боту:', error);
                 reject(error);
             }
         });
@@ -922,6 +985,9 @@
             return;
         }
 
+        console.log('📝 Отправка сообщения:', text);
+        console.log('Режим:', isDemo ? 'ДЕМО' : 'БОТ');
+
         // Добавляем сообщение пользователя
         const userMessage = {
             id: Date.now().toString(),
@@ -941,6 +1007,7 @@
             let response;
 
             if (!isDemo && userId && isTelegramWebApp) {
+                console.log('🤖 Отправляю боту через Web App API');
                 response = await sendToBot(text);
 
                 const botMessage = {
@@ -953,6 +1020,7 @@
 
                 addMessageToChat(currentChatId, botMessage);
             } else {
+                console.log('🎭 Демо режим - генерирую локальный ответ');
                 response = await sendToBotDemo(text);
 
                 const botMessage = {
@@ -966,12 +1034,12 @@
             }
 
         } catch (error) {
-            console.error('Ошибка отправки сообщения:', error);
+            console.error('❌ Ошибка отправки сообщения:', error);
 
             const errorMessage = {
                 id: (Date.now() + 1).toString(),
                 sender: 'assistant',
-                text: '😔 Произошла ошибка. Попробуйте еще раз.',
+                text: '😔 Произошла ошибка при отправке боту. Проверьте подключение.',
                 timestamp: new Date().toISOString()
             };
 
@@ -1176,6 +1244,7 @@
         document.getElementById('newChatName').value = '';
         saveUserData();
 
+        // Уведомляем бота о создании чата
         if (!isDemo && userId && isTelegramWebApp) {
             const chatData = {
                 type: 'create_chat',
@@ -1295,10 +1364,16 @@
     function sendDataToBot(data) {
         try {
             if (isTelegramWebApp && tg && tg.sendData) {
+                console.log('📡 Отправляю данные боту:', data);
                 tg.sendData(JSON.stringify(data));
+                return true;
+            } else {
+                console.warn('⚠️ Telegram Web App недоступен для отправки данных');
+                return false;
             }
         } catch (error) {
-            console.error('Ошибка отправки данных:', error);
+            console.error('❌ Ошибка отправки данных боту:', error);
+            return false;
         }
     }
 
