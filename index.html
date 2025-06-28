@@ -562,6 +562,9 @@
     function sendDataToBot(data) {
         if (!isTelegramWebApp || !tg || typeof tg.sendData !== 'function') {
             log('❌ Отправка данных невозможна - Web App недоступен');
+
+            // Fallback: показать данные пользователю
+            showNotification('⚠️ Скопируйте и отправьте в чат: ' + data.message);
             return false;
         }
 
@@ -570,11 +573,14 @@
             log('📡 Отправляю данные боту', data);
 
             tg.sendData(jsonData);
-            log('✅ Данные отправлены успешно');
+            log('✅ Данные отправлены через tg.sendData');
             return true;
 
         } catch (error) {
             log('❌ Ошибка отправки данных', error);
+
+            // Fallback для ошибок
+            showNotification('❌ Ошибка отправки. Отправьте сообщение прямо в чат бота.');
             return false;
         }
     }
@@ -619,22 +625,28 @@
                 const success = sendDataToBot(messageData);
 
                 if (success) {
-                    const statusMessage = {
-                        id: (Date.now() + 1).toString(),
-                        sender: 'assistant',
-                        text: '📤 Сообщение отправлено боту. Ответ появится в Telegram чате.',
-                        timestamp: new Date().toISOString(),
-                        sent_to_bot: true
-                    };
+                    // НЕ показываем мгновенное подтверждение
+                    // Ждем реального ответа от бота
+                    showNotification('📡 Отправляю боту...');
 
-                    addMessage(statusMessage);
-                    showNotification('✅ Отправлено боту!');
+                    // Таймаут для отображения статуса
+                    setTimeout(() => {
+                        const statusMessage = {
+                            id: (Date.now() + 1).toString(),
+                            sender: 'assistant',
+                            text: '⏳ Запрос отправлен. Ответ появится в Telegram чате через несколько секунд.',
+                            timestamp: new Date().toISOString()
+                        };
+                        addMessage(statusMessage);
+                        hideTypingIndicator();
+                    }, 2000);
+
                 } else {
                     throw new Error('Не удалось отправить данные боту');
                 }
 
             } else {
-                // Демо ответ
+                // Демо ответ (без изменений)
                 setTimeout(() => {
                     const demoResponses = [
                         '🤖 Привет! Это демо-режим. В полной версии здесь будет ответ от Gemini AI.',
@@ -659,6 +671,7 @@
 
         } catch (error) {
             log('❌ Ошибка отправки сообщения', error);
+            hideTypingIndicator();
 
             const errorMessage = {
                 id: (Date.now() + 1).toString(),
@@ -669,10 +682,6 @@
 
             addMessage(errorMessage);
             showNotification('❌ Ошибка отправки');
-        } finally {
-            if (!isDemo) {
-                hideTypingIndicator();
-            }
         }
     }
 
