@@ -13,18 +13,28 @@
         }
 
         :root {
-            --bg-primary: var(--tg-theme-bg-color, #1a1a1a);
-            --bg-secondary: var(--tg-theme-secondary-bg-color, #2d2d2d);
-            --text-primary: var(--tg-theme-text-color, #ffffff);
-            --text-hint: var(--tg-theme-hint-color, #666666);
-            --button-color: var(--tg-theme-button-color, #ff6b35);
-            --button-text: var(--tg-theme-button-text-color, #ffffff);
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #3a3a3a;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #666666;
+            --accent: #ff6b35;
+            --accent-hover: #ff5722;
+            --border: #404040;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --error: #f44336;
+            --telegram-bg: var(--tg-theme-bg-color, #1a1a1a);
+            --telegram-text: var(--tg-theme-text-color, #ffffff);
+            --telegram-hint: var(--tg-theme-hint-color, #666666);
+            --telegram-button: var(--tg-theme-button-color, #ff6b35);
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
+            background: var(--telegram-bg);
+            color: var(--telegram-text);
             height: 100vh;
             overflow: hidden;
             font-size: 14px;
@@ -38,10 +48,11 @@
             max-height: 100vh;
         }
 
+        /* Заголовок приложения */
         .app-header {
             padding: 12px 16px;
             background: var(--bg-secondary);
-            border-bottom: 1px solid #404040;
+            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -56,23 +67,6 @@
             gap: 8px;
         }
 
-        .status-indicator {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 500;
-        }
-
-        .status-bot {
-            background: #4caf50;
-            color: white;
-        }
-
-        .status-demo {
-            background: #ff9800;
-            color: white;
-        }
-
         .header-actions {
             display: flex;
             gap: 8px;
@@ -80,21 +74,135 @@
 
         .header-btn {
             padding: 6px 10px;
-            background: #3a3a3a;
-            border: 1px solid #404040;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
             border-radius: 6px;
-            color: var(--text-hint);
+            color: var(--text-secondary);
             font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .header-btn:hover, .header-btn.active {
-            background: var(--button-color);
-            color: var(--button-text);
-            border-color: var(--button-color);
+            background: var(--telegram-button);
+            color: white;
+            border-color: var(--telegram-button);
         }
 
+        /* Панель чатов (скрытая по умолчанию на мобильных) */
+        .chats-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-secondary);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chats-panel.open {
+            transform: translateX(0);
+        }
+
+        .chats-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .close-chats-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: 50%;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--telegram-button);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .new-chat-btn:active {
+            opacity: 0.8;
+        }
+
+        .chats-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .chat-item {
+            padding: 12px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .chat-item:active {
+            background: var(--bg-tertiary);
+        }
+
+        .chat-item.active {
+            background: var(--bg-tertiary);
+            border-left-color: var(--telegram-button);
+        }
+
+        .chat-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-preview {
+            font-size: 12px;
+            color: var(--telegram-hint);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Основная область чата */
         .main-content {
             flex: 1;
             display: flex;
@@ -106,7 +214,7 @@
         .current-chat-info {
             padding: 8px 16px;
             background: var(--bg-secondary);
-            border-bottom: 1px solid #404040;
+            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -117,8 +225,33 @@
             font-size: 14px;
             font-weight: 500;
             flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
+        .chat-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:active {
+            background: var(--telegram-button);
+            color: white;
+        }
+
+        /* Сообщения */
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -150,7 +283,7 @@
             width: 28px;
             height: 28px;
             border-radius: 50%;
-            background: var(--button-color);
+            background: var(--telegram-button);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -163,15 +296,15 @@
             background: var(--bg-secondary);
             padding: 10px 12px;
             border-radius: 12px;
-            border: 1px solid #404040;
+            border: 1px solid var(--border);
             flex: 1;
             min-width: 0;
         }
 
         .message.user .message-content {
-            background: var(--button-color);
-            color: var(--button-text);
-            border-color: var(--button-color);
+            background: var(--telegram-button);
+            color: white;
+            border-color: var(--telegram-button);
         }
 
         .message-text {
@@ -182,7 +315,7 @@
 
         .message-time {
             font-size: 10px;
-            color: var(--text-hint);
+            color: var(--telegram-hint);
             margin-top: 6px;
         }
 
@@ -190,18 +323,19 @@
             color: rgba(255, 255, 255, 0.7);
         }
 
-        .message-status {
+        .status-indicator {
             font-size: 10px;
-            color: #4caf50;
+            color: var(--success);
             margin-top: 4px;
             display: flex;
             align-items: center;
             gap: 4px;
         }
 
+        /* Область ввода */
         .input-area {
             padding: 12px;
-            border-top: 1px solid #404040;
+            border-top: 1px solid var(--border);
             background: var(--bg-secondary);
             flex-shrink: 0;
         }
@@ -223,9 +357,9 @@
             max-height: 80px;
             padding: 8px 12px 8px 32px;
             background: var(--bg-primary);
-            border: 1px solid #404040;
+            border: 1px solid var(--border);
             border-radius: 18px;
-            color: var(--text-primary);
+            color: var(--telegram-text);
             font-size: 13px;
             resize: none;
             outline: none;
@@ -233,7 +367,7 @@
         }
 
         .message-input:focus {
-            border-color: var(--button-color);
+            border-color: var(--telegram-button);
         }
 
         .input-icon {
@@ -241,17 +375,17 @@
             left: 10px;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--text-hint);
+            color: var(--telegram-hint);
             font-size: 14px;
         }
 
         .send-btn {
             width: 36px;
             height: 36px;
-            background: var(--button-color);
+            background: var(--telegram-button);
             border: none;
             border-radius: 50%;
-            color: var(--button-text);
+            color: white;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -265,17 +399,18 @@
         }
 
         .send-btn:disabled {
-            background: #3a3a3a;
+            background: var(--bg-tertiary);
             cursor: not-allowed;
             opacity: 0.5;
         }
 
+        /* Типинг индикатор */
         .typing-indicator {
             display: flex;
             align-items: center;
             gap: 8px;
             padding: 8px 12px;
-            color: var(--text-hint);
+            color: var(--telegram-hint);
             font-size: 12px;
             background: var(--bg-secondary);
             border-radius: 16px;
@@ -290,7 +425,7 @@
         .typing-dot {
             width: 4px;
             height: 4px;
-            background: var(--text-hint);
+            background: var(--telegram-hint);
             border-radius: 50%;
             animation: typing 1.4s infinite ease-in-out;
         }
@@ -303,13 +438,90 @@
             30% { opacity: 1; }
         }
 
+        /* Модальные окна */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 300px;
+            border: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--telegram-text);
+            font-size: 13px;
+            margin-bottom: 16px;
+            outline: none;
+        }
+
+        .modal-input:focus {
+            border-color: var(--telegram-button);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            flex: 1;
+        }
+
+        .modal-btn.primary {
+            background: var(--telegram-button);
+            color: white;
+        }
+
+        .modal-btn.secondary {
+            background: var(--bg-tertiary);
+            color: var(--telegram-text);
+        }
+
+        .modal-btn:active {
+            opacity: 0.8;
+        }
+
+        /* Уведомления */
         .notification {
             position: fixed;
             top: 16px;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--button-color);
-            color: var(--button-text);
+            background: var(--telegram-button);
+            color: white;
             padding: 10px 16px;
             border-radius: 8px;
             font-size: 12px;
@@ -325,13 +537,14 @@
             to { transform: translateX(-50%) translateY(0); opacity: 1; }
         }
 
+        /* Пустое состояние */
         .empty-state {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100%;
-            color: var(--text-hint);
+            color: var(--telegram-hint);
             text-align: center;
             padding: 32px 16px;
         }
@@ -354,41 +567,101 @@
             line-height: 1.4;
         }
 
-        .debug-panel {
-            position: fixed;
-            bottom: 50px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 10px;
-            z-index: 999;
-            max-width: 200px;
-            word-break: break-all;
+        /* Адаптивность для больших экранов */
+        @media (min-width: 768px) {
+            .app-container {
+                flex-direction: row;
+            }
+
+            .app-header {
+                display: none;
+            }
+
+            .chats-panel {
+                position: static;
+                width: 280px;
+                transform: none;
+                border-right: 1px solid var(--border);
+            }
+
+            .close-chats-btn {
+                display: none;
+            }
+
+            .main-content {
+                border-left: 1px solid var(--border);
+            }
+
+            .current-chat-info {
+                display: flex;
+            }
+        }
+
+        /* Скрытие элементов на очень маленьких экранах */
+        @media (max-width: 320px) {
+            .chat-actions {
+                display: none;
+            }
+
+            .header-actions .header-btn:not(:first-child) {
+                display: none;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+        }
+
+        /* Темы Telegram */
+        .theme-light {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f8f8;
+            --bg-tertiary: #e8e8e8;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --text-muted: #999999;
+            --border: #e0e0e0;
         }
     </style>
 </head>
 <body>
 <div class="app-container">
-    <!-- Заголовок -->
+    <!-- Заголовок приложения (только на мобильных) -->
     <div class="app-header">
         <div class="app-title">
             <span>🤖</span>
             <span id="currentChatTitle">Gemini AI</span>
-            <span class="status-indicator" id="statusIndicator">Загрузка...</span>
         </div>
         <div class="header-actions">
-            <button class="header-btn" onclick="showDebugInfo()">🔍</button>
-            <button class="header-btn" onclick="testConnection()">🧪</button>
+            <button class="header-btn" onclick="toggleChatsPanel()">💬</button>
+            <button class="header-btn" onclick="createNewChat()">➕</button>
+        </div>
+    </div>
+
+    <!-- Панель чатов -->
+    <div class="chats-panel" id="chatsPanel">
+        <button class="close-chats-btn" onclick="toggleChatsPanel()">✕</button>
+        <div class="chats-header">
+            <button class="new-chat-btn" onclick="createNewChat()">
+                <span>✨</span>
+                Новый чат
+            </button>
+        </div>
+        <div class="chats-list" id="chatsList">
+            <!-- Список чатов будет здесь -->
         </div>
     </div>
 
     <!-- Основная область -->
     <div class="main-content">
-        <!-- Информация о чате -->
+        <!-- Информация о текущем чате -->
         <div class="current-chat-info">
-            <div class="current-chat-name" id="chatTitle">Основной чат</div>
+            <div class="current-chat-name" id="chatTitle">Выберите чат</div>
+            <div class="chat-actions">
+                <button class="action-btn" onclick="clearCurrentChat()">🧹</button>
+                <button class="action-btn" onclick="renameCurrentChat()">✏️</button>
+                <button class="action-btn" onclick="deleteCurrentChat()">🗑️</button>
+            </div>
         </div>
 
         <!-- Сообщения -->
@@ -397,7 +670,7 @@
                 <div class="empty-icon">💬</div>
                 <div class="empty-title">Добро пожаловать!</div>
                 <div class="empty-description">
-                    Начните общение с Gemini AI
+                    Создайте новый чат или выберите существующий для общения с Gemini AI
                 </div>
             </div>
         </div>
@@ -422,9 +695,29 @@
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Debug панель -->
-    <div class="debug-panel" id="debugPanel" style="display: none;"></div>
+<!-- Модальные окна -->
+<div class="modal" id="newChatModal">
+    <div class="modal-content">
+        <div class="modal-title">Новый чат</div>
+        <input type="text" class="modal-input" id="newChatName" placeholder="Название чата">
+        <div class="modal-actions">
+            <button class="modal-btn secondary" onclick="closeModal('newChatModal')">Отмена</button>
+            <button class="modal-btn primary" onclick="confirmNewChat()">Создать</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="renameChatModal">
+    <div class="modal-content">
+        <div class="modal-title">Переименовать</div>
+        <input type="text" class="modal-input" id="renameChatName" placeholder="Новое название">
+        <div class="modal-actions">
+            <button class="modal-btn secondary" onclick="closeModal('renameChatModal')">Отмена</button>
+            <button class="modal-btn primary" onclick="confirmRenameChat()">Сохранить</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -433,186 +726,253 @@
     let isTelegramWebApp = false;
     let userId = null;
     let isDemo = false;
-    let messages = [];
 
-    // Логирование
-    function log(message, data = null) {
-        console.log(`[WebApp] ${message}`, data || '');
-        updateDebugPanel();
-    }
+    // Проверяем доступность Telegram Web App
+    if (tg) {
+        console.log('Telegram Web App обнаружен');
+        tg.ready();
+        tg.expand();
+        isTelegramWebApp = true;
 
-    // Инициализация Telegram Web App
-    function initTelegramWebApp() {
-        if (!tg) {
-            log('❌ Telegram Web App недоступен');
-            return false;
+        // Применяем тему Telegram
+        if (tg.colorScheme === 'light') {
+            document.body.classList.add('theme-light');
         }
 
-        log('✅ Telegram Web App обнаружен');
+        // Настройка цветов заголовка
+        tg.setHeaderColor('#1a1a1a');
+        tg.setBackgroundColor('#1a1a1a');
 
-        try {
-            tg.ready();
-            tg.expand();
-            tg.disableVerticalSwipes();
-
-            // Применяем тему
-            if (tg.colorScheme === 'light') {
-                document.body.classList.add('theme-light');
-            }
-
-            // Получаем user ID
-            userId = tg.initDataUnsafe?.user?.id?.toString();
-
-            log('Telegram инициализирован', {
-                version: tg.version,
-                platform: tg.platform,
-                colorScheme: tg.colorScheme,
-                userId: userId,
-                initData: tg.initData ? 'присутствует' : 'отсутствует'
-            });
-
-            // Проверяем возможность отправки данных
-            if (typeof tg.sendData !== 'function') {
-                log('⚠️ tg.sendData недоступен');
-                return false;
-            }
-
-            isTelegramWebApp = true;
-            return true;
-
-        } catch (error) {
-            log('❌ Ошибка инициализации Telegram Web App', error);
-            return false;
-        }
+        console.log('Telegram Web App инициализирован');
+    } else {
+        console.log('Telegram Web App недоступен');
     }
 
-    // Инициализация приложения
+    // Состояние приложения
+    let chats = [];
+    let currentChatId = null;
+    let messages = {};
+    let userId = null;
+    let isDemo = false;
+
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📋 DOM загружен, начинаю инициализацию');
+        initializeApp();
+        setupEventListeners();
+
+        // Добавляем индикатор режима в интерфейс
+        setTimeout(() => {
+            const indicator = document.createElement('div');
+            indicator.style.position = 'fixed';
+            indicator.style.bottom = '10px';
+            indicator.style.right = '10px';
+            indicator.style.padding = '4px 8px';
+            indicator.style.background = isDemo ? '#ff9800' : '#4caf50';
+            indicator.style.color = 'white';
+            indicator.style.borderRadius = '4px';
+            indicator.style.fontSize = '10px';
+            indicator.style.zIndex = '1000';
+            indicator.textContent = isDemo ? 'ДЕМО' : 'БОТ';
+            document.body.appendChild(indicator);
+        }, 1000);
+    });
+
+    // Логирование для отладки
+    console.log('📱 Gemini AI Assistant - Версия с полной интеграцией');
+    console.log('🔗 Ожидаю параметр user_id в URL для активации бота');
+    console.log('🤖 Поддержка Telegram Web App:', !!window.Telegram?.WebApp);
+
+    // Основная функция инициализации
     function initializeApp() {
-        log('🚀 Инициализация приложения');
+        console.log('🚀 Начинаю инициализацию приложения');
 
-        // Пытаемся получить userId из URL
+        // Получаем userId из URL параметров
         const urlParams = new URLSearchParams(window.location.search);
-        const urlUserId = urlParams.get('user_id');
+        userId = urlParams.get('user_id');
 
-        if (urlUserId) {
-            userId = urlUserId;
-            log('User ID из URL', userId);
-        }
+        console.log('User ID из URL:', userId);
+        console.log('Telegram Web App доступен:', isTelegramWebApp);
 
-        // Инициализируем Telegram Web App
-        const telegramOk = initTelegramWebApp();
-
-        // Определяем режим
-        if (telegramOk && userId) {
+        // Определяем режим работы
+        if (userId && isTelegramWebApp) {
             isDemo = false;
-            log('✅ Режим: ИНТЕГРАЦИЯ С БОТОМ');
-            updateStatusIndicator('БОТ', 'status-bot');
-
-            // Отправляем сигнал о готовности
-            setTimeout(() => {
-                sendReadySignal();
-            }, 1000);
-
+            console.log('✅ Режим: ИНТЕГРАЦИЯ С БОТОМ');
+            loadUserData();
+            syncWithBot(); // Синхронизируемся с ботом
         } else {
             isDemo = true;
-            log('⚠️ Режим: ДЕМО');
-            updateStatusIndicator('ДЕМО', 'status-demo');
-
-            showNotification('📱 Демо режим. Откройте через бот для полной функциональности.');
+            console.log('⚠️ Режим: ДЕМО (userId=' + userId + ', WebApp=' + isTelegramWebApp + ')');
+            loadChatsDemo();
+            showNotification('📱 Демо режим. Для полной функциональности откройте через бот.');
         }
-
-        // Загружаем начальные данные
-        loadInitialData();
     }
 
-    // Обновление индикатора статуса
-    function updateStatusIndicator(text, className) {
-        const indicator = document.getElementById('statusIndicator');
-        indicator.textContent = text;
-        indicator.className = `status-indicator ${className}`;
-    }
+    // Синхронизация с ботом
+    function syncWithBot() {
+        if (!userId || !isTelegramWebApp) return;
 
-    // Отправка сигнала готовности боту
-    function sendReadySignal() {
-        const readyData = {
-            type: 'app_ready',
+        console.log('🔄 Синхронизация с ботом...');
+
+        const syncData = {
+            type: 'sync_chats',
             user_id: userId,
-            timestamp: new Date().toISOString(),
-            app_version: '1.0.0'
+            timestamp: new Date().toISOString()
         };
 
-        sendDataToBot(readyData);
+        sendDataToBot(syncData);
     }
 
-    // Загрузка начальных данных
-    function loadInitialData() {
-        if (isDemo) {
-            // В демо режиме показываем приветствие
-            const welcomeMessage = {
-                id: 'welcome',
-                sender: 'assistant',
-                text: '👋 Добро пожаловать в демо-режим Gemini AI Assistant! Попробуйте отправить сообщение.',
-                timestamp: new Date().toISOString()
-            };
-            addMessage(welcomeMessage);
+    // Переключение панели чатов
+    function toggleChatsPanel() {
+        const panel = document.getElementById('chatsPanel');
+        panel.classList.toggle('open');
+    }
+
+    // Запрос данных пользователя у бота
+    function requestUserDataFromBot() {
+        if (!userId || !isTelegramWebApp) return;
+
+        const requestData = {
+            type: 'get_user_data',
+            user_id: userId,
+            timestamp: new Date().toISOString()
+        };
+
+        sendDataToBot(requestData);
+    }
+
+    // Загрузка данных пользователя
+    function loadUserData() {
+        const savedChats = localStorage.getItem(`gemini_chats_${userId}`);
+        const savedMessages = localStorage.getItem(`gemini_messages_${userId}`);
+        const savedCurrentChat = localStorage.getItem(`gemini_current_chat_${userId}`);
+
+        if (savedChats) {
+            chats = JSON.parse(savedChats);
+            messages = JSON.parse(savedMessages) || {};
+            currentChatId = savedCurrentChat;
+        } else {
+            createDefaultChat();
+        }
+
+        renderChats();
+        if (currentChatId) {
+            selectChat(currentChatId);
         }
     }
 
-    // Отправка данных боту
-    // Отправка данных боту с полной диагностикой
-    function sendDataToBot(data) {
-        log('🚀 Начинаю отправку данных боту', data);
+    // Загрузка в демо режиме
+    function loadChatsDemo() {
+        const savedChats = localStorage.getItem('gemini_chats_demo');
+        const savedMessages = localStorage.getItem('gemini_messages_demo');
+        const savedCurrentChat = localStorage.getItem('gemini_current_chat_demo');
 
-        // Проверяем доступность Telegram Web App
-        if (!window.Telegram || !window.Telegram.WebApp) {
-            log('❌ Telegram Web App объект недоступен');
-            showNotification('❌ Telegram Web App недоступен');
-            return false;
+        if (savedChats) {
+            chats = JSON.parse(savedChats);
+            messages = JSON.parse(savedMessages) || {};
+            currentChatId = savedCurrentChat;
+        } else {
+            createDefaultChat();
         }
 
-        const tg = window.Telegram.WebApp;
-
-        // Детальная проверка
-        log('🔍 Telegram Web App статус:', {
-            isExpanded: tg.isExpanded,
-            viewportHeight: tg.viewportHeight,
-            platform: tg.platform,
-            version: tg.version,
-            initData: tg.initData ? 'присутствует' : 'отсутствует',
-            sendDataAvailable: typeof tg.sendData === 'function'
-        });
-
-        if (typeof tg.sendData !== 'function') {
-            log('❌ tg.sendData недоступен');
-            showNotification('❌ Функция отправки недоступна');
-            return false;
+        renderChats();
+        if (currentChatId) {
+            selectChat(currentChatId);
         }
+    }
 
+    // Создание дефолтного чата
+    function createDefaultChat() {
+        const defaultChat = {
+            id: 'chat_' + Date.now(),
+            name: 'Основной чат',
+            created: new Date().toISOString(),
+            lastMessage: '',
+            messageCount: 0
+        };
+        chats = [defaultChat];
+        messages = { [defaultChat.id]: [] };
+        currentChatId = defaultChat.id;
+        saveUserData();
+    }
+
+    // Сохранение данных пользователя
+    function saveUserData() {
         try {
-            const jsonData = JSON.stringify(data);
-            log('📡 Отправляю JSON данные:', jsonData);
-
-            // Показываем пользователю что отправляем
-            showNotification('📡 Отправляю данные боту...');
-
-            // Отправляем данные
-            tg.sendData(jsonData);
-
-            log('✅ tg.sendData() выполнен успешно');
-
-            // Дополнительная диагностика
-            setTimeout(() => {
-                log('⏰ Проверка через 2 секунды после отправки');
-                showNotification('⏳ Данные отправлены, ожидайте ответ в боте...');
-            }, 2000);
-
-            return true;
-
+            if (userId && !isDemo) {
+                localStorage.setItem(`gemini_chats_${userId}`, JSON.stringify(chats));
+                localStorage.setItem(`gemini_messages_${userId}`, JSON.stringify(messages));
+                localStorage.setItem(`gemini_current_chat_${userId}`, currentChatId);
+            } else {
+                localStorage.setItem('gemini_chats_demo', JSON.stringify(chats));
+                localStorage.setItem('gemini_messages_demo', JSON.stringify(messages));
+                localStorage.setItem('gemini_current_chat_demo', currentChatId);
+            }
         } catch (error) {
-            log('❌ Ошибка в sendDataToBot', error);
-            showNotification('❌ Ошибка отправки: ' + error.message);
-            return false;
+            console.error('Ошибка сохранения данных:', error);
         }
+    }
+
+    // Отправка сообщения боту
+    async function sendToBot(text) {
+        return new Promise((resolve, reject) => {
+            try {
+                if (!isTelegramWebApp) {
+                    throw new Error('Telegram Web App недоступен');
+                }
+
+                if (!userId) {
+                    throw new Error('User ID не найден');
+                }
+
+                console.log('📤 Отправляю сообщение боту:', text);
+
+                const messageData = {
+                    type: 'send_message',
+                    user_id: userId,
+                    message: text,
+                    chat_id: currentChatId,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Отправляем данные боту
+                tg.sendData(JSON.stringify(messageData));
+
+                console.log('✅ Данные отправлены боту');
+                showNotification('📤 Отправлено боту!');
+
+                // Возвращаем подтверждение отправки
+                resolve({
+                    text: '📤 Сообщение отправлено боту. Ответ придет в Telegram чат.',
+                    sent_to_bot: true
+                });
+
+            } catch (error) {
+                console.error('❌ Ошибка отправки боту:', error);
+                reject(error);
+            }
+        });
+    }
+
+    // Демо функция
+    async function sendToBotDemo(text) {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                const responses = [
+                    `🤖 Привет! Ты написал: "${text}". Это демо-режим.`,
+                    `💡 Интересно! В полной версии Gemini AI ответит на: "${text}"`,
+                    `🎯 Обработаю твой запрос: "${text}" в реальном режиме.`,
+                    `✨ Демо ответ на "${text}". Попробуй создать новые чаты!`
+                ];
+
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+
+                resolve({
+                    text: randomResponse
+                });
+            }, 1000 + Math.random() * 2000);
+        });
     }
 
     // Отправка сообщения
@@ -620,12 +980,13 @@
         const input = document.getElementById('messageInput');
         const text = input.value.trim();
 
-        if (!text) {
+        if (!text || !currentChatId) {
             showNotification('⚠️ Введите сообщение');
             return;
         }
 
-        log('📝 Отправка сообщения', text);
+        console.log('📝 Отправка сообщения:', text);
+        console.log('Режим:', isDemo ? 'ДЕМО' : 'БОТ');
 
         // Добавляем сообщение пользователя
         const userMessage = {
@@ -635,7 +996,7 @@
             timestamp: new Date().toISOString()
         };
 
-        addMessage(userMessage);
+        addMessageToChat(currentChatId, userMessage);
         input.value = '';
         autoResize(input);
 
@@ -643,89 +1004,133 @@
         showTypingIndicator();
 
         try {
-            if (!isDemo) {
-                // Отправляем боту
-                const messageData = {
-                    type: 'send_message',
-                    user_id: userId,
-                    message: text,
+            let response;
+
+            if (!isDemo && userId && isTelegramWebApp) {
+                console.log('🤖 Отправляю боту через Web App API');
+                response = await sendToBot(text);
+
+                const botMessage = {
+                    id: (Date.now() + 1).toString(),
+                    sender: 'assistant',
+                    text: response.text,
+                    timestamp: new Date().toISOString(),
+                    sent_to_bot: true
+                };
+
+                addMessageToChat(currentChatId, botMessage);
+            } else {
+                console.log('🎭 Демо режим - генерирую локальный ответ');
+                response = await sendToBotDemo(text);
+
+                const botMessage = {
+                    id: (Date.now() + 1).toString(),
+                    sender: 'assistant',
+                    text: response.text,
                     timestamp: new Date().toISOString()
                 };
 
-                const success = sendDataToBot(messageData);
-
-                if (success) {
-                    // НЕ показываем мгновенное подтверждение
-                    // Ждем реального ответа от бота
-                    showNotification('📡 Отправляю боту...');
-
-                    // Таймаут для отображения статуса
-                    setTimeout(() => {
-                        const statusMessage = {
-                            id: (Date.now() + 1).toString(),
-                            sender: 'assistant',
-                            text: '⏳ Запрос отправлен. Ответ появится в Telegram чате через несколько секунд.',
-                            timestamp: new Date().toISOString()
-                        };
-                        addMessage(statusMessage);
-                        hideTypingIndicator();
-                    }, 2000);
-
-                } else {
-                    throw new Error('Не удалось отправить данные боту');
-                }
-
-            } else {
-                // Демо ответ (без изменений)
-                setTimeout(() => {
-                    const demoResponses = [
-                        '🤖 Привет! Это демо-режим. В полной версии здесь будет ответ от Gemini AI.',
-                        '💡 Интересный вопрос! В реальном режиме Gemini AI даст подробный ответ.',
-                        '✨ Демо ответ: Ваше сообщение получено! Для реальных ответов откройте через бот.',
-                        '🎯 В полной версии я смогу помочь с любыми вопросами используя Gemini AI!'
-                    ];
-
-                    const randomResponse = demoResponses[Math.floor(Math.random() * demoResponses.length)];
-
-                    const demoMessage = {
-                        id: (Date.now() + 1).toString(),
-                        sender: 'assistant',
-                        text: randomResponse,
-                        timestamp: new Date().toISOString()
-                    };
-
-                    addMessage(demoMessage);
-                    hideTypingIndicator();
-                }, 1000 + Math.random() * 2000);
+                addMessageToChat(currentChatId, botMessage);
             }
 
         } catch (error) {
-            log('❌ Ошибка отправки сообщения', error);
-            hideTypingIndicator();
+            console.error('❌ Ошибка отправки сообщения:', error);
 
             const errorMessage = {
                 id: (Date.now() + 1).toString(),
                 sender: 'assistant',
-                text: '😔 Произошла ошибка при отправке. Проверьте подключение и попробуйте снова.',
+                text: '😔 Произошла ошибка при отправке боту. Проверьте подключение.',
                 timestamp: new Date().toISOString()
             };
 
-            addMessage(errorMessage);
+            addMessageToChat(currentChatId, errorMessage);
             showNotification('❌ Ошибка отправки');
+        } finally {
+            hideTypingIndicator();
         }
     }
 
-    // Добавление сообщения
-    function addMessage(message) {
-        messages.push(message);
-        renderMessages();
+    // Добавление сообщения в чат
+    function addMessageToChat(chatId, message) {
+        if (!messages[chatId]) {
+            messages[chatId] = [];
+        }
+
+        messages[chatId].push(message);
+
+        const chat = chats.find(c => c.id === chatId);
+        if (chat) {
+            chat.lastMessage = message.text.length > 30 ?
+                message.text.substring(0, 30) + '...' : message.text;
+            chat.messageCount = messages[chatId].length;
+        }
+
+        if (chatId === currentChatId) {
+            renderMessages(chatId);
+        }
+        renderChats();
+        saveUserData();
+    }
+
+    // Рендер списка чатов
+    function renderChats() {
+        const chatsList = document.getElementById('chatsList');
+        chatsList.innerHTML = '';
+
+        chats.forEach(chat => {
+            const chatElement = document.createElement('div');
+            chatElement.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
+            chatElement.onclick = () => {
+                selectChat(chat.id);
+                if (window.innerWidth < 768) {
+                    toggleChatsPanel();
+                }
+            };
+
+            const lastMessage = chat.lastMessage || 'Нет сообщений';
+
+            chatElement.innerHTML = `
+                <div class="chat-name">${chat.name}</div>
+                <div class="chat-preview">${lastMessage}</div>
+                <div class="chat-meta">
+                    <span>${chat.messageCount} сообщ.</span>
+                    <span>${formatDate(chat.created)}</span>
+                </div>
+            `;
+
+            chatsList.appendChild(chatElement);
+        });
+    }
+
+    // Выбор чата
+    function selectChat(chatId) {
+        currentChatId = chatId;
+        const chat = chats.find(c => c.id === chatId);
+
+        document.getElementById('chatTitle').textContent = chat.name;
+        document.getElementById('currentChatTitle').textContent = chat.name;
+
+        renderMessages(chatId);
+        renderChats();
+        saveUserData();
+
+        if (!isDemo && userId && isTelegramWebApp) {
+            const switchData = {
+                type: 'switch_chat',
+                user_id: userId,
+                chat_id: chatId,
+                timestamp: new Date().toISOString()
+            };
+            sendDataToBot(switchData);
+        }
     }
 
     // Рендер сообщений
-    function renderMessages() {
+    function renderMessages(chatId) {
         const container = document.getElementById('messagesContainer');
+        const chatMessages = messages[chatId] || [];
 
-        if (messages.length === 0) {
+        if (chatMessages.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">💬</div>
@@ -740,7 +1145,7 @@
 
         container.innerHTML = '';
 
-        messages.forEach(message => {
+        chatMessages.forEach(message => {
             const messageElement = createMessageElement(message);
             container.appendChild(messageElement);
         });
@@ -758,7 +1163,7 @@
 
         let statusIndicator = '';
         if (message.sent_to_bot) {
-            statusIndicator = '<div class="message-status">📤 Отправлено в бот</div>';
+            statusIndicator = '<div class="status-indicator">📤 Отправлено в бот</div>';
         }
 
         messageDiv.innerHTML = `
@@ -777,9 +1182,10 @@
     function showTypingIndicator() {
         const container = document.getElementById('messagesContainer');
 
-        // Удаляем существующий индикатор
-        const existing = document.getElementById('typingIndicator');
-        if (existing) existing.remove();
+        const existingIndicator = document.getElementById('typingIndicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
 
         const indicator = document.createElement('div');
         indicator.className = 'message assistant';
@@ -802,13 +1208,179 @@
 
     function hideTypingIndicator() {
         const indicator = document.getElementById('typingIndicator');
-        if (indicator) indicator.remove();
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    // Создание нового чата
+    function createNewChat() {
+        document.getElementById('newChatModal').style.display = 'flex';
+        document.getElementById('newChatName').focus();
+    }
+
+    function confirmNewChat() {
+        const name = document.getElementById('newChatName').value.trim();
+        if (!name) {
+            showNotification('⚠️ Введите название чата');
+            return;
+        }
+
+        const newChat = {
+            id: 'chat_' + Date.now(),
+            name: name,
+            created: new Date().toISOString(),
+            lastMessage: '',
+            messageCount: 0
+        };
+
+        chats.push(newChat);
+        messages[newChat.id] = [];
+        currentChatId = newChat.id;
+
+        renderChats();
+        selectChat(newChat.id);
+        closeModal('newChatModal');
+        document.getElementById('newChatName').value = '';
+        saveUserData();
+
+        // Уведомляем бота о создании чата
+        if (!isDemo && userId && isTelegramWebApp) {
+            const chatData = {
+                type: 'create_chat',
+                user_id: userId,
+                chat_id: newChat.id,
+                chat_name: name,
+                timestamp: new Date().toISOString()
+            };
+            sendDataToBot(chatData);
+        }
+
+        showNotification(`✨ Чат "${name}" создан!`);
+    }
+
+    // Переименование чата
+    function renameCurrentChat() {
+        if (!currentChatId) return;
+        const chat = chats.find(c => c.id === currentChatId);
+        document.getElementById('renameChatName').value = chat.name;
+        document.getElementById('renameChatModal').style.display = 'flex';
+        document.getElementById('renameChatName').focus();
+    }
+
+    function confirmRenameChat() {
+        const newName = document.getElementById('renameChatName').value.trim();
+        if (!newName || !currentChatId) {
+            showNotification('⚠️ Введите новое название');
+            return;
+        }
+
+        const chat = chats.find(c => c.id === currentChatId);
+        chat.name = newName;
+
+        document.getElementById('chatTitle').textContent = newName;
+        document.getElementById('currentChatTitle').textContent = newName;
+        renderChats();
+        closeModal('renameChatModal');
+        saveUserData();
+
+        showNotification(`✏️ Чат переименован`);
+    }
+
+    // Удаление чата
+    function deleteCurrentChat() {
+        if (!currentChatId || chats.length <= 1) {
+            showNotification('❌ Нельзя удалить последний чат');
+            return;
+        }
+
+        const chat = chats.find(c => c.id === currentChatId);
+
+        // Используем Telegram Web App confirm если доступен
+        let confirmDelete;
+        if (isTelegramWebApp && tg.showConfirm) {
+            tg.showConfirm(`Удалить чат "${chat.name}"?`, (confirmed) => {
+                if (confirmed) {
+                    executeDeleteChat(chat);
+                }
+            });
+            return;
+        } else {
+            confirmDelete = confirm(`Удалить чат "${chat.name}"?`);
+        }
+
+        if (confirmDelete) {
+            executeDeleteChat(chat);
+        }
+    }
+
+    function executeDeleteChat(chat) {
+        const chatName = chat.name;
+
+        chats = chats.filter(c => c.id !== currentChatId);
+        delete messages[currentChatId];
+
+        currentChatId = chats[0].id;
+        selectChat(currentChatId);
+        saveUserData();
+
+        showNotification(`🗑️ Чат "${chatName}" удален`);
+    }
+
+    // Очистка чата
+    function clearCurrentChat() {
+        if (!currentChatId) return;
+
+        const chat = chats.find(c => c.id === currentChatId);
+
+        if (isTelegramWebApp && tg.showConfirm) {
+            tg.showConfirm(`Очистить чат "${chat.name}"?`, (confirmed) => {
+                if (confirmed) {
+                    executeClearChat(chat);
+                }
+            });
+            return;
+        }
+
+        const confirmClear = confirm(`Очистить чат "${chat.name}"?`);
+        if (confirmClear) {
+            executeClearChat(chat);
+        }
+    }
+
+    function executeClearChat(chat) {
+        messages[currentChatId] = [];
+        chat.lastMessage = '';
+        chat.messageCount = 0;
+
+        renderMessages(currentChatId);
+        renderChats();
+        saveUserData();
+
+        showNotification(`🧹 Чат очищен`);
+    }
+
+    // Отправка данных через Telegram Web App
+    function sendDataToBot(data) {
+        try {
+            if (isTelegramWebApp && tg && tg.sendData) {
+                console.log('📡 Отправляю данные боту:', data);
+                tg.sendData(JSON.stringify(data));
+                return true;
+            } else {
+                console.warn('⚠️ Telegram Web App недоступен для отправки данных');
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Ошибка отправки данных боту:', error);
+            return false;
+        }
     }
 
     // Уведомления
     function showNotification(message) {
-        // Удаляем существующие уведомления
-        document.querySelectorAll('.notification').forEach(notif => notif.remove());
+        const existingNotifications = document.querySelectorAll('.notification');
+        existingNotifications.forEach(notif => notif.remove());
 
         const notification = document.createElement('div');
         notification.className = 'notification';
@@ -823,64 +1395,16 @@
         }, 3000);
     }
 
-    // Отладочные функции
-    function showDebugInfo() {
-        const debugInfo = {
-            isTelegramWebApp,
-            userId,
-            isDemo,
-            messagesCount: messages.length,
-            telegramVersion: tg?.version || 'N/A',
-            platform: tg?.platform || 'N/A',
-            sendDataAvailable: typeof tg?.sendData === 'function'
-        };
-
-        log('🔍 Debug Info', debugInfo);
-        showNotification(`Debug: ${isDemo ? 'ДЕМО' : 'БОТ'}, UserID: ${userId}`);
-    }
-
-    function testConnection() {
-        log('🧪 Расширенное тестирование соединения');
-
-        const testData = {
-            type: 'test_connection',
-            user_id: userId,
-            timestamp: new Date().toISOString(),
-            test_message: 'Тестовое сообщение от Web App',
-            browser_info: {
-                userAgent: navigator.userAgent,
-                platform: navigator.platform,
-                language: navigator.language
-            }
-        };
-
-        log('🧪 Тестовые данные:', testData);
-
-        const success = sendDataToBot(testData);
-
-        if (success) {
-            showNotification('🧪 Тест запущен! Проверьте бот через 3-5 секунд.');
-        } else {
-            showNotification('❌ Тест не удался');
-        }
-    }
-
-    function updateDebugPanel() {
-        const panel = document.getElementById('debugPanel');
-        const debugData = {
-            WebApp: isTelegramWebApp ? '✅' : '❌',
-            Mode: isDemo ? 'DEMO' : 'BOT',
-            UserID: userId || 'null',
-            Messages: messages.length,
-            SendData: typeof tg?.sendData === 'function' ? '✅' : '❌'
-        };
-
-        panel.innerHTML = Object.entries(debugData)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join('<br>');
-    }
-
     // Утилиты
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    function formatDate(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+    }
+
     function formatTime(isoString) {
         const date = new Date(isoString);
         return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -898,40 +1422,49 @@
         }
     }
 
-    // Обработчики событий
-    document.addEventListener('DOMContentLoaded', function() {
-        log('📋 DOM загружен');
-        initializeApp();
-
-        // Показываем debug панель в демо режиме
-        setTimeout(() => {
-            if (isDemo) {
-                document.getElementById('debugPanel').style.display = 'block';
+    function setupEventListeners() {
+        // Закрытие модальных окон
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
             }
-        }, 2000);
-    });
-
-    // Обработка событий Telegram Web App
-    if (tg) {
-        tg.onEvent('web_app_data_sent', function() {
-            log('✅ Данные успешно отправлены боту');
         });
 
-        tg.onEvent('theme_changed', function() {
-            log('🎨 Тема изменена');
+        // Enter в модальных окнах
+        document.getElementById('newChatName').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                confirmNewChat();
+            }
         });
+
+        document.getElementById('renameChatName').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                confirmRenameChat();
+            }
+        });
+
+        // Закрытие панели чатов при клике вне её
+        document.addEventListener('click', function(event) {
+            const panel = document.getElementById('chatsPanel');
+            if (panel.classList.contains('open') &&
+                !panel.contains(event.target) &&
+                !event.target.closest('.header-btn')) {
+                panel.classList.remove('open');
+            }
+        });
+
+        // Обработка закрытия Web App
+        if (isTelegramWebApp) {
+            tg.onEvent('web_app_data_sent', function() {
+                console.log('Данные отправлены боту');
+            });
+        }
     }
 
-    // Глобальная обработка ошибок
-    window.addEventListener('error', function(event) {
-        log('❌ Глобальная ошибка', event.error);
-    });
-
-    window.addEventListener('unhandledrejection', function(event) {
-        log('❌ Необработанное отклонение промиса', event.reason);
-    });
-
-    log('🚀 Web App скрипт загружен');
+    // Инициализация при загрузке
+    console.log('🚀 Gemini AI Assistant загружен');
+    console.log('Режим:', isDemo ? 'Демо' : 'Интеграция с ботом');
+    console.log('Telegram Web App:', isTelegramWebApp ? 'Доступен' : 'Недоступен');
 </script>
 </body>
 </html>
