@@ -1,574 +1,576 @@
-// ДИАГНОСТИЧЕСКИЙ КОД ДЛЯ WEB APP
-const tg = window.Telegram?.WebApp;
-let isTelegramWebApp = false;
-let userId = null;
-let isDemo = false;
-let messages = [];
-let debugLogs = [];
-
-// Максимальное логирование
-function log(message, data = null) {
-const timestamp = new Date().toLocaleTimeString();
-const logEntry = `[${timestamp}] ${message}`;
-
-console.log(logEntry, data || '');
-debugLogs.push({ time: timestamp, message, data });
-
-// Ограничиваем логи
-if (debugLogs.length > 50) {
-debugLogs.shift();
-}
-
-updateDebugPanel();
-
-// Критические ошибки показываем как уведомления
-if (message.includes('❌') || message.includes('КРИТИЧЕСКАЯ')) {
-showNotification(message);
-}
-}
-
-// Отправка данных с максимальной диагностикой
-function sendDataToBot(data) {
-log('🚀 НАЧИНАЮ ДИАГНОСТИКУ ОТПРАВКИ');
-
-// Проверка 1: Telegram объект
-if (!window.Telegram) {
-log('❌ КРИТИЧЕСКАЯ: window.Telegram отсутствует!');
-showNotification('❌ Telegram объект недоступен');
-return false;
-}
-log('✅ window.Telegram найден');
-
-// Проверка 2: WebApp объект
-if (!window.Telegram.WebApp) {
-log('❌ КРИТИЧЕСКАЯ: window.Telegram.WebApp отсутствует!');
-showNotification('❌ WebApp недоступен');
-return false;
-}
-log('✅ window.Telegram.WebApp найден');
-
-const tg = window.Telegram.WebApp;
-
-// Проверка 3: Детальная диагностика WebApp
-const diagnostics = {
-platform: tg.platform,
-version: tg.version,
-colorScheme: tg.colorScheme,
-isExpanded: tg.isExpanded,
-viewportHeight: tg.viewportHeight,
-initDataExists: !!tg.initData,
-initDataLength: tg.initData ? tg.initData.length : 0,
-initDataPreview: tg.initData ? tg.initData.substring(0, 50) + '...' : 'НЕТ',
-sendDataType: typeof tg.sendData,
-sendDataExists: typeof tg.sendData === 'function',
-MainButtonExists: !!tg.MainButton,
-themeParamsCount: Object.keys(tg.themeParams || {}).length,
-webAppUser: tg.initDataUnsafe?.user ? 'есть' : 'нет'
-};
-
-log('🔍 ПОЛНАЯ ДИАГНОСТИКА TELEGRAM WEBAPP:', diagnostics);
-
-// Проверка 4: КРИТИЧЕСКИ ВАЖНО - initData
-if (!tg.initData) {
-log('❌ КРИТИЧЕСКАЯ ОШИБКА: tg.initData ОТСУТСТВУЕТ!');
-log('❌ Это означает что Web App открыт НЕ через Telegram!');
-log('❌ Web App должен быть открыт через кнопку в боте!');
-showNotification('❌ Web App открыт вне Telegram! Откройте через бот!');
-return false;
-}
-log('✅ tg.initData присутствует');
-
-// Проверка 5: sendData функция
-if (typeof tg.sendData !== 'function') {
-log('❌ КРИТИЧЕСКАЯ: tg.sendData не является функцией!');
-log('❌ Тип tg.sendData:', typeof tg.sendData);
-log('❌ Все методы tg:', Object.getOwnPropertyNames(tg));
-showNotification('❌ sendData недоступен');
-return false;
-}
-log('✅ tg.sendData является функцией');
-
-try {
-// Подготавливаем данные
-const jsonData = JSON.stringify(data);
-log('📊 Данные для отправки:', {
-originalData: data,
-jsonString: jsonData,
-jsonLength: jsonData.length
-});
-
-if (jsonData.length > 4096) {
-log('⚠️ ПРЕДУПРЕЖДЕНИЕ: Данные слишком большие!', jsonData.length);
-}
-
-// Показываем статус
-showNotification('📡 Отправляю данные... ' + jsonData.length + ' символов');
-
-// КРИТИЧЕСКИЙ МОМЕНТ - отправка
-log('🚀 ВЫПОЛНЯЮ tg.sendData()...');
-
-// Устанавливаем обработчики событий ПЕРЕД отправкой
-let eventFired = false;
-
-if (tg.onEvent) {
-tg.onEvent('web_app_data_sent', function() {
-log('✅ СОБЫТИЕ: web_app_data_sent получено!');
-eventFired = true;
-showNotification('✅ Данные отправлены (подтверждено событием)');
-});
-}
-
-// ОТПРАВЛЯЕМ
-tg.sendData(jsonData);
-
-log('✅ tg.sendData() выполнен БЕЗ исключений!');
-
-// Проверяем результат через интервалы
-setTimeout(() => {
-log('⏰ 1 сек: событие fired =', eventFired);
-if (!eventFired) {
-showNotification('⏳ 1 сек - событие не получено');
-}
-}, 1000);
-
-setTimeout(() => {
-log('⏰ 3 сек: событие fired =', eventFired);
-if (!eventFired) {
-showNotification('⚠️ 3 сек - событие web_app_data_sent НЕ получено!');
-log('❌ ВОЗМОЖНАЯ ПРОБЛЕМА: Telegram не отправил данные боту');
-}
-}, 3000);
-
-setTimeout(() => {
-log('⏰ 5 сек: финальная проверка, событие fired =', eventFired);
-if (!eventFired) {
-showNotification('❌ 5 сек - данные НЕ отправлены! Проверьте настройки бота');
-}
-}, 5000);
-
-return true;
-
-} catch (error) {
-log('❌ ИСКЛЮЧЕНИЕ в sendDataToBot:', {
-message: error.message,
-stack: error.stack,
-name: error.name
-});
-showNotification('❌ Ошибка: ' + error.message);
-return false;
-}
-}
-
-// Супер-тест
-function testConnection() {
-log('🧪 ЗАПУСК СУПЕР-ТЕСТА СОЕДИНЕНИЯ');
-
-const testData = {
-type: 'test_connection',
-user_id: userId,
-timestamp: new Date().toISOString(),
-test_message: '🧪 КРИТИЧЕСКИЙ ТЕСТ ОТ WEB APP',
-webapp_info: {
-url: window.location.href,
-userAgent: navigator.userAgent.substring(0, 100),
-timestamp: Date.now(),
-telegram: {
-version: tg?.version,
-platform: tg?.platform,
-initDataExists: !!tg?.initData,
-sendDataExists: typeof tg?.sendData === 'function'
-}
-}
-};
-
-log('🧪 Отправляю тестовые данные:', testData);
-
-const success = sendDataToBot(testData);
-
-log('🧪 Результат отправки теста:', success);
-
-if (success) {
-showNotification('🧪 Тест отправлен! Ждите ответ в боте...');
-} else {
-showNotification('❌ Тест не удался! См. консоль');
-}
-}
-
-// Инициализация с максимальной диагностикой
-function initTelegramWebApp() {
-log('🚀 НАЧИНАЮ ИНИЦИАЛИЗАЦИЮ WEBAPP');
-
-if (!tg) {
-log('❌ Telegram Web App недоступен');
-return false;
-}
-
-log('✅ Telegram Web App найден');
-
-try {
-// Регистрируем ВСЕ возможные события
-if (tg.onEvent) {
-tg.onEvent('web_app_data_sent', () => {
-log('📡 СОБЫТИЕ: web_app_data_sent');
-showNotification('✅ Данные отправлены!');
-});
-
-tg.onEvent('theme_changed', () => {
-log('🎨 СОБЫТИЕ: theme_changed');
-});
-
-tg.onEvent('viewport_changed', () => {
-log('📱 СОБЫТИЕ: viewport_changed');
-});
-}
-
-// Инициализация
-tg.ready();
-log('✅ tg.ready() выполнен');
-
-tg.expand();
-log('✅ tg.expand() выполнен');
-
-tg.disableVerticalSwipes?.();
-log('✅ tg.disableVerticalSwipes() выполнен');
-
-// Получаем user ID
-if (tg.initDataUnsafe?.user?.id) {
-userId = tg.initDataUnsafe.user.id.toString();
-log('✅ User ID из initDataUnsafe:', userId);
-}
-
-// Из URL параметров
-const urlParams = new URLSearchParams(window.location.search);
-const urlUserId = urlParams.get('user_id');
-if (urlUserId) {
-userId = urlUserId;
-log('✅ User ID из URL:', userId);
-}
-
-// Финальная диагностика
-log('📊 ИТОГОВАЯ ДИАГНОСТИКА:', {
-userId: userId,
-initData: tg.initData ? 'ЕСТЬ' : 'НЕТ!',
-sendData: typeof tg.sendData === 'function' ? 'ДОСТУПЕН' : 'НЕТ!'
-});
-
-isTelegramWebApp = true;
-return true;
-
-} catch (error) {
-log('❌ Ошибка инициализации:', error);
-return false;
-}
-}
-
-// Инициализация приложения
-function initializeApp() {
-log('🚀 ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ');
-
-// Получаем userId из URL
-const urlParams = new URLSearchParams(window.location.search);
-const urlUserId = urlParams.get('user_id');
-if (urlUserId) {
-userId = urlUserId;
-log('✅ User ID из URL:', userId);
-}
-
-// Инициализируем Telegram
-const telegramOk = initTelegramWebApp();
-
-if (telegramOk && userId) {
-isDemo = false;
-log('✅ РЕЖИМ: ИНТЕГРАЦИЯ С БОТОМ');
-updateStatusIndicator('БОТ', 'status-bot');
-
-// Отправляем ready сигнал
-setTimeout(() => {
-sendReadySignal();
-}, 1000);
-
-} else {
-isDemo = true;
-log('⚠️ РЕЖИМ: ДЕМО');
-updateStatusIndicator('ДЕМО', 'status-demo');
-showNotification('📱 Демо режим. Откройте через бот!');
-}
-
-loadInitialData();
-}
-
-// Отправка ready сигнала
-function sendReadySignal() {
-const readyData = {
-type: 'app_ready',
-user_id: userId,
-timestamp: new Date().toISOString(),
-app_version: '2.0.0-debug'
-};
-
-log('📡 Отправляю ready сигнал:', readyData);
-sendDataToBot(readyData);
-}
-
-// Отправка сообщения
-async function sendMessage() {
-const input = document.getElementById('messageInput');
-const text = input.value.trim();
-
-if (!text) {
-showNotification('⚠️ Введите сообщение');
-return;
-}
-
-log('📝 Отправка сообщения:', text);
-
-// Добавляем сообщение пользователя
-const userMessage = {
-id: Date.now().toString(),
-sender: 'user',
-text: text,
-timestamp: new Date().toISOString()
-};
-
-addMessage(userMessage);
-input.value = '';
-autoResize(input);
-showTypingIndicator();
-
-try {
-if (!isDemo) {
-const messageData = {
-type: 'send_message',
-user_id: userId,
-message: text,
-timestamp: new Date().toISOString()
-};
-
-log('📤 Отправляю сообщение боту:', messageData);
-const success = sendDataToBot(messageData);
-
-if (success) {
-showNotification('📡 Сообщение отправлено боту!');
-
-setTimeout(() => {
-const statusMessage = {
-id: (Date.now() + 1).toString(),
-sender: 'assistant',
-text: '⏳ Запрос отправлен боту. Ответ появится в Telegram чате.',
-timestamp: new Date().toISOString()
-};
-addMessage(statusMessage);
-hideTypingIndicator();
-}, 2000);
-
-} else {
-throw new Error('Не удалось отправить');
-}
-} else {
-// Демо ответ
-setTimeout(() => {
-const demoMessage = {
-id: (Date.now() + 1).toString(),
-sender: 'assistant',
-text: '🤖 Демо ответ. Для реальной работы откройте через Telegram бот!',
-timestamp: new Date().toISOString()
-};
-addMessage(demoMessage);
-hideTypingIndicator();
-}, 1500);
-}
-
-} catch (error) {
-log('❌ Ошибка отправки сообщения:', error);
-hideTypingIndicator();
-
-const errorMessage = {
-id: (Date.now() + 1).toString(),
-sender: 'assistant',
-text: '😔 Ошибка отправки. Проверьте подключение.',
-timestamp: new Date().toISOString()
-};
-addMessage(errorMessage);
-showNotification('❌ Ошибка отправки');
-}
-}
-
-// Остальные функции (без изменений)
-function updateStatusIndicator(text, className) {
-const indicator = document.getElementById('statusIndicator');
-indicator.textContent = text;
-indicator.className = `status-indicator ${className}`;
-}
-
-function loadInitialData() {
-if (isDemo) {
-const welcomeMessage = {
-id: 'welcome',
-sender: 'assistant',
-text: '👋 Демо режим. Для полной функциональности откройте через Telegram бот!',
-timestamp: new Date().toISOString()
-};
-addMessage(welcomeMessage);
-}
-}
-
-function addMessage(message) {
-messages.push(message);
-renderMessages();
-}
-
-function renderMessages() {
-const container = document.getElementById('messagesContainer');
-
-if (messages.length === 0) {
-container.innerHTML = `
-<div class="empty-state">
-    <div class="empty-icon">💬</div>
-    <div class="empty-title">Начните общение</div>
-    <div class="empty-description">Отправьте сообщение Gemini AI</div>
-</div>
-`;
-return;
-}
-
-container.innerHTML = '';
-messages.forEach(message => {
-const messageElement = createMessageElement(message);
-container.appendChild(messageElement);
-});
-container.scrollTop = container.scrollHeight;
-}
-
-function createMessageElement(message) {
-const messageDiv = document.createElement('div');
-messageDiv.className = `message ${message.sender}`;
-
-const avatar = message.sender === 'user' ? '👤' : '🤖';
-const time = formatTime(message.timestamp);
-
-messageDiv.innerHTML = `
-<div class="message-avatar">${avatar}</div>
-<div class="message-content">
-    <div class="message-text">${message.text}</div>
-    <div class="message-time">${time}</div>
-</div>
-`;
-
-return messageDiv;
-}
-
-function showTypingIndicator() {
-const container = document.getElementById('messagesContainer');
-const existing = document.getElementById('typingIndicator');
-if (existing) existing.remove();
-
-const indicator = document.createElement('div');
-indicator.className = 'message assistant';
-indicator.id = 'typingIndicator';
-indicator.innerHTML = `
-<div class="message-avatar">🤖</div>
-<div class="typing-indicator">
-    <span>Обрабатываю...</span>
-    <div class="typing-dots">
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
-    </div>
-</div>
-`;
-
-container.appendChild(indicator);
-container.scrollTop = container.scrollHeight;
-}
-
-function hideTypingIndicator() {
-const indicator = document.getElementById('typingIndicator');
-if (indicator) indicator.remove();
-}
-
-function showNotification(message) {
-document.querySelectorAll('.notification').forEach(notif => notif.remove());
-
-const notification = document.createElement('div');
-notification.className = 'notification';
-notification.textContent = message;
-document.body.appendChild(notification);
-
-setTimeout(() => {
-if (notification.parentNode) {
-notification.remove();
-}
-}, 4000);
-}
-
-function showDebugInfo() {
-const debugInfo = {
-isTelegramWebApp,
-userId,
-isDemo,
-messagesCount: messages.length,
-telegramVersion: tg?.version || 'N/A',
-platform: tg?.platform || 'N/A',
-initData: tg?.initData ? 'ЕСТЬ' : 'НЕТ',
-sendDataAvailable: typeof tg?.sendData === 'function'
-};
-
-log('🔍 Debug Info:', debugInfo);
-alert('Debug:\n' + JSON.stringify(debugInfo, null, 2));
-}
-
-function updateDebugPanel() {
-const panel = document.getElementById('debugPanel');
-const recentLogs = debugLogs.slice(-8);
-
-panel.innerHTML = recentLogs.map(log =>
-`${log.time}: ${log.message}`
-).join('<br>');
-}
-
-function formatTime(isoString) {
-const date = new Date(isoString);
-return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-}
-
-function autoResize(textarea) {
-textarea.style.height = 'auto';
-textarea.style.height = Math.min(textarea.scrollHeight, 80) + 'px';
-}
-
-function handleKeyPress(event) {
-if (event.key === 'Enter' && !event.shiftKey) {
-event.preventDefault();
-sendMessage();
-}
-}
-
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-log('📋 DOM загружен, запускаю инициализацию');
-initializeApp();
-
-// Показываем debug панель через 2 секунды
-setTimeout(() => {
-document.getElementById('debugPanel').style.display = 'block';
-}, 2000);
-});
-
-// Обработка событий Telegram
-if (tg) {
-tg.onEvent?.('web_app_data_sent', function() {
-log('✅ ГЛОБАЛЬНОЕ СОБЫТИЕ: web_app_data_sent');
-showNotification('✅ Данные отправлены (глобальное событие)');
-});
-}
-
-// Глобальная обработка ошибок
-window.addEventListener('error', function(event) {
-log('❌ Глобальная ошибка:', event.error);
-});
-
-window.addEventListener('unhandledrejection', function(event) {
-log('❌ Отклонение промиса:', event.reason);
-});
-
-log('🚀 Web App скрипт полностью загружен');
+<script>
+    // ДИАГНОСТИЧЕСКИЙ КОД ДЛЯ WEB APP
+    const tg = window.Telegram?.WebApp;
+    let isTelegramWebApp = false;
+    let userId = null;
+    let isDemo = false;
+    let messages = [];
+    let debugLogs = [];
+
+    // Максимальное логирование
+    function log(message, data = null) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = `[${timestamp}] ${message}`;
+
+        console.log(logEntry, data || '');
+        debugLogs.push({ time: timestamp, message, data });
+
+        // Ограничиваем логи
+        if (debugLogs.length > 50) {
+            debugLogs.shift();
+        }
+
+        updateDebugPanel();
+
+        // Критические ошибки показываем как уведомления
+        if (message.includes('❌') || message.includes('КРИТИЧЕСКАЯ')) {
+            showNotification(message);
+        }
+    }
+
+    // Отправка данных с максимальной диагностикой
+    function sendDataToBot(data) {
+        log('🚀 НАЧИНАЮ ДИАГНОСТИКУ ОТПРАВКИ');
+
+        // Проверка 1: Telegram объект
+        if (!window.Telegram) {
+            log('❌ КРИТИЧЕСКАЯ: window.Telegram отсутствует!');
+            showNotification('❌ Telegram объект недоступен');
+            return false;
+        }
+        log('✅ window.Telegram найден');
+
+        // Проверка 2: WebApp объект
+        if (!window.Telegram.WebApp) {
+            log('❌ КРИТИЧЕСКАЯ: window.Telegram.WebApp отсутствует!');
+            showNotification('❌ WebApp недоступен');
+            return false;
+        }
+        log('✅ window.Telegram.WebApp найден');
+
+        const tg = window.Telegram.WebApp;
+
+        // Проверка 3: Детальная диагностика WebApp
+        const diagnostics = {
+            platform: tg.platform,
+            version: tg.version,
+            colorScheme: tg.colorScheme,
+            isExpanded: tg.isExpanded,
+            viewportHeight: tg.viewportHeight,
+            initDataExists: !!tg.initData,
+            initDataLength: tg.initData ? tg.initData.length : 0,
+            initDataPreview: tg.initData ? tg.initData.substring(0, 50) + '...' : 'НЕТ',
+            sendDataType: typeof tg.sendData,
+            sendDataExists: typeof tg.sendData === 'function',
+            MainButtonExists: !!tg.MainButton,
+            themeParamsCount: Object.keys(tg.themeParams || {}).length,
+            webAppUser: tg.initDataUnsafe?.user ? 'есть' : 'нет'
+        };
+
+        log('🔍 ПОЛНАЯ ДИАГНОСТИКА TELEGRAM WEBAPP:', diagnostics);
+
+        // Проверка 4: КРИТИЧЕСКИ ВАЖНО - initData
+        if (!tg.initData) {
+            log('❌ КРИТИЧЕСКАЯ ОШИБКА: tg.initData ОТСУТСТВУЕТ!');
+            log('❌ Это означает что Web App открыт НЕ через Telegram!');
+            log('❌ Web App должен быть открыт через кнопку в боте!');
+            showNotification('❌ Web App открыт вне Telegram! Откройте через бот!');
+            return false;
+        }
+        log('✅ tg.initData присутствует');
+
+        // Проверка 5: sendData функция
+        if (typeof tg.sendData !== 'function') {
+            log('❌ КРИТИЧЕСКАЯ: tg.sendData не является функцией!');
+            log('❌ Тип tg.sendData:', typeof tg.sendData);
+            log('❌ Все методы tg:', Object.getOwnPropertyNames(tg));
+            showNotification('❌ sendData недоступен');
+            return false;
+        }
+        log('✅ tg.sendData является функцией');
+
+        try {
+            // Подготавливаем данные
+            const jsonData = JSON.stringify(data);
+            log('📊 Данные для отправки:', {
+                originalData: data,
+                jsonString: jsonData,
+                jsonLength: jsonData.length
+            });
+
+            if (jsonData.length > 4096) {
+                log('⚠️ ПРЕДУПРЕЖДЕНИЕ: Данные слишком большие!', jsonData.length);
+            }
+
+            // Показываем статус
+            showNotification('📡 Отправляю данные... ' + jsonData.length + ' символов');
+
+            // КРИТИЧЕСКИЙ МОМЕНТ - отправка
+            log('🚀 ВЫПОЛНЯЮ tg.sendData()...');
+
+            // Устанавливаем обработчики событий ПЕРЕД отправкой
+            let eventFired = false;
+
+            if (tg.onEvent) {
+                tg.onEvent('web_app_data_sent', function() {
+                    log('✅ СОБЫТИЕ: web_app_data_sent получено!');
+                    eventFired = true;
+                    showNotification('✅ Данные отправлены (подтверждено событием)');
+                });
+            }
+
+            // ОТПРАВЛЯЕМ
+            tg.sendData(jsonData);
+
+            log('✅ tg.sendData() выполнен БЕЗ исключений!');
+
+            // Проверяем результат через интервалы
+            setTimeout(() => {
+                log('⏰ 1 сек: событие fired =', eventFired);
+                if (!eventFired) {
+                    showNotification('⏳ 1 сек - событие не получено');
+                }
+            }, 1000);
+
+            setTimeout(() => {
+                log('⏰ 3 сек: событие fired =', eventFired);
+                if (!eventFired) {
+                    showNotification('⚠️ 3 сек - событие web_app_data_sent НЕ получено!');
+                    log('❌ ВОЗМОЖНАЯ ПРОБЛЕМА: Telegram не отправил данные боту');
+                }
+            }, 3000);
+
+            setTimeout(() => {
+                log('⏰ 5 сек: финальная проверка, событие fired =', eventFired);
+                if (!eventFired) {
+                    showNotification('❌ 5 сек - данные НЕ отправлены! Проверьте настройки бота');
+                }
+            }, 5000);
+
+            return true;
+
+        } catch (error) {
+            log('❌ ИСКЛЮЧЕНИЕ в sendDataToBot:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+            showNotification('❌ Ошибка: ' + error.message);
+            return false;
+        }
+    }
+
+    // Супер-тест
+    function testConnection() {
+        log('🧪 ЗАПУСК СУПЕР-ТЕСТА СОЕДИНЕНИЯ');
+
+        const testData = {
+            type: 'test_connection',
+            user_id: userId,
+            timestamp: new Date().toISOString(),
+            test_message: '🧪 КРИТИЧЕСКИЙ ТЕСТ ОТ WEB APP',
+            webapp_info: {
+                url: window.location.href,
+                userAgent: navigator.userAgent.substring(0, 100),
+                timestamp: Date.now(),
+                telegram: {
+                    version: tg?.version,
+                    platform: tg?.platform,
+                    initDataExists: !!tg?.initData,
+                    sendDataExists: typeof tg?.sendData === 'function'
+                }
+            }
+        };
+
+        log('🧪 Отправляю тестовые данные:', testData);
+
+        const success = sendDataToBot(testData);
+
+        log('🧪 Результат отправки теста:', success);
+
+        if (success) {
+            showNotification('🧪 Тест отправлен! Ждите ответ в боте...');
+        } else {
+            showNotification('❌ Тест не удался! См. консоль');
+        }
+    }
+
+    // Инициализация с максимальной диагностикой
+    function initTelegramWebApp() {
+        log('🚀 НАЧИНАЮ ИНИЦИАЛИЗАЦИЮ WEBAPP');
+
+        if (!tg) {
+            log('❌ Telegram Web App недоступен');
+            return false;
+        }
+
+        log('✅ Telegram Web App найден');
+
+        try {
+            // Регистрируем ВСЕ возможные события
+            if (tg.onEvent) {
+                tg.onEvent('web_app_data_sent', () => {
+                    log('📡 СОБЫТИЕ: web_app_data_sent');
+                    showNotification('✅ Данные отправлены!');
+                });
+
+                tg.onEvent('theme_changed', () => {
+                    log('🎨 СОБЫТИЕ: theme_changed');
+                });
+
+                tg.onEvent('viewport_changed', () => {
+                    log('📱 СОБЫТИЕ: viewport_changed');
+                });
+            }
+
+            // Инициализация
+            tg.ready();
+            log('✅ tg.ready() выполнен');
+
+            tg.expand();
+            log('✅ tg.expand() выполнен');
+
+            tg.disableVerticalSwipes?.();
+            log('✅ tg.disableVerticalSwipes() выполнен');
+
+            // Получаем user ID
+            if (tg.initDataUnsafe?.user?.id) {
+                userId = tg.initDataUnsafe.user.id.toString();
+                log('✅ User ID из initDataUnsafe:', userId);
+            }
+
+            // Из URL параметров
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlUserId = urlParams.get('user_id');
+            if (urlUserId) {
+                userId = urlUserId;
+                log('✅ User ID из URL:', userId);
+            }
+
+            // Финальная диагностика
+            log('📊 ИТОГОВАЯ ДИАГНОСТИКА:', {
+                userId: userId,
+                initData: tg.initData ? 'ЕСТЬ' : 'НЕТ!',
+                sendData: typeof tg.sendData === 'function' ? 'ДОСТУПЕН' : 'НЕТ!'
+            });
+
+            isTelegramWebApp = true;
+            return true;
+
+        } catch (error) {
+            log('❌ Ошибка инициализации:', error);
+            return false;
+        }
+    }
+
+    // Инициализация приложения
+    function initializeApp() {
+        log('🚀 ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ');
+
+        // Получаем userId из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlUserId = urlParams.get('user_id');
+        if (urlUserId) {
+            userId = urlUserId;
+            log('✅ User ID из URL:', userId);
+        }
+
+        // Инициализируем Telegram
+        const telegramOk = initTelegramWebApp();
+
+        if (telegramOk && userId) {
+            isDemo = false;
+            log('✅ РЕЖИМ: ИНТЕГРАЦИЯ С БОТОМ');
+            updateStatusIndicator('БОТ', 'status-bot');
+
+            // Отправляем ready сигнал
+            setTimeout(() => {
+                sendReadySignal();
+            }, 1000);
+
+        } else {
+            isDemo = true;
+            log('⚠️ РЕЖИМ: ДЕМО');
+            updateStatusIndicator('ДЕМО', 'status-demo');
+            showNotification('📱 Демо режим. Откройте через бот!');
+        }
+
+        loadInitialData();
+    }
+
+    // Отправка ready сигнала
+    function sendReadySignal() {
+        const readyData = {
+            type: 'app_ready',
+            user_id: userId,
+            timestamp: new Date().toISOString(),
+            app_version: '2.0.0-debug'
+        };
+
+        log('📡 Отправляю ready сигнал:', readyData);
+        sendDataToBot(readyData);
+    }
+
+    // Отправка сообщения
+    async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const text = input.value.trim();
+
+        if (!text) {
+            showNotification('⚠️ Введите сообщение');
+            return;
+        }
+
+        log('📝 Отправка сообщения:', text);
+
+        // Добавляем сообщение пользователя
+        const userMessage = {
+            id: Date.now().toString(),
+            sender: 'user',
+            text: text,
+            timestamp: new Date().toISOString()
+        };
+
+        addMessage(userMessage);
+        input.value = '';
+        autoResize(input);
+        showTypingIndicator();
+
+        try {
+            if (!isDemo) {
+                const messageData = {
+                    type: 'send_message',
+                    user_id: userId,
+                    message: text,
+                    timestamp: new Date().toISOString()
+                };
+
+                log('📤 Отправляю сообщение боту:', messageData);
+                const success = sendDataToBot(messageData);
+
+                if (success) {
+                    showNotification('📡 Сообщение отправлено боту!');
+
+                    setTimeout(() => {
+                        const statusMessage = {
+                            id: (Date.now() + 1).toString(),
+                            sender: 'assistant',
+                            text: '⏳ Запрос отправлен боту. Ответ появится в Telegram чате.',
+                            timestamp: new Date().toISOString()
+                        };
+                        addMessage(statusMessage);
+                        hideTypingIndicator();
+                    }, 2000);
+
+                } else {
+                    throw new Error('Не удалось отправить');
+                }
+            } else {
+                // Демо ответ
+                setTimeout(() => {
+                    const demoMessage = {
+                        id: (Date.now() + 1).toString(),
+                        sender: 'assistant',
+                        text: '🤖 Демо ответ. Для реальной работы откройте через Telegram бот!',
+                        timestamp: new Date().toISOString()
+                    };
+                    addMessage(demoMessage);
+                    hideTypingIndicator();
+                }, 1500);
+            }
+
+        } catch (error) {
+            log('❌ Ошибка отправки сообщения:', error);
+            hideTypingIndicator();
+
+            const errorMessage = {
+                id: (Date.now() + 1).toString(),
+                sender: 'assistant',
+                text: '😔 Ошибка отправки. Проверьте подключение.',
+                timestamp: new Date().toISOString()
+            };
+            addMessage(errorMessage);
+            showNotification('❌ Ошибка отправки');
+        }
+    }
+
+    // Остальные функции (без изменений)
+    function updateStatusIndicator(text, className) {
+        const indicator = document.getElementById('statusIndicator');
+        indicator.textContent = text;
+        indicator.className = `status-indicator ${className}`;
+    }
+
+    function loadInitialData() {
+        if (isDemo) {
+            const welcomeMessage = {
+                id: 'welcome',
+                sender: 'assistant',
+                text: '👋 Демо режим. Для полной функциональности откройте через Telegram бот!',
+                timestamp: new Date().toISOString()
+            };
+            addMessage(welcomeMessage);
+        }
+    }
+
+    function addMessage(message) {
+        messages.push(message);
+        renderMessages();
+    }
+
+    function renderMessages() {
+        const container = document.getElementById('messagesContainer');
+
+        if (messages.length === 0) {
+            container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <div class="empty-title">Начните общение</div>
+                <div class="empty-description">Отправьте сообщение Gemini AI</div>
+            </div>
+        `;
+            return;
+        }
+
+        container.innerHTML = '';
+        messages.forEach(message => {
+            const messageElement = createMessageElement(message);
+            container.appendChild(messageElement);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function createMessageElement(message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${message.sender}`;
+
+        const avatar = message.sender === 'user' ? '👤' : '🤖';
+        const time = formatTime(message.timestamp);
+
+        messageDiv.innerHTML = `
+        <div class="message-avatar">${avatar}</div>
+        <div class="message-content">
+            <div class="message-text">${message.text}</div>
+            <div class="message-time">${time}</div>
+        </div>
+    `;
+
+        return messageDiv;
+    }
+
+    function showTypingIndicator() {
+        const container = document.getElementById('messagesContainer');
+        const existing = document.getElementById('typingIndicator');
+        if (existing) existing.remove();
+
+        const indicator = document.createElement('div');
+        indicator.className = 'message assistant';
+        indicator.id = 'typingIndicator';
+        indicator.innerHTML = `
+        <div class="message-avatar">🤖</div>
+        <div class="typing-indicator">
+            <span>Обрабатываю...</span>
+            <div class="typing-dots">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+            </div>
+        </div>
+    `;
+
+        container.appendChild(indicator);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+        const indicator = document.getElementById('typingIndicator');
+        if (indicator) indicator.remove();
+    }
+
+    function showNotification(message) {
+        document.querySelectorAll('.notification').forEach(notif => notif.remove());
+
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 4000);
+    }
+
+    function showDebugInfo() {
+        const debugInfo = {
+            isTelegramWebApp,
+            userId,
+            isDemo,
+            messagesCount: messages.length,
+            telegramVersion: tg?.version || 'N/A',
+            platform: tg?.platform || 'N/A',
+            initData: tg?.initData ? 'ЕСТЬ' : 'НЕТ',
+            sendDataAvailable: typeof tg?.sendData === 'function'
+        };
+
+        log('🔍 Debug Info:', debugInfo);
+        alert('Debug:\n' + JSON.stringify(debugInfo, null, 2));
+    }
+
+    function updateDebugPanel() {
+        const panel = document.getElementById('debugPanel');
+        const recentLogs = debugLogs.slice(-8);
+
+        panel.innerHTML = recentLogs.map(log =>
+            `${log.time}: ${log.message}`
+        ).join('<br>');
+    }
+
+    function formatTime(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 80) + 'px';
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    // Инициализация при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        log('📋 DOM загружен, запускаю инициализацию');
+        initializeApp();
+
+        // Показываем debug панель через 2 секунды
+        setTimeout(() => {
+            document.getElementById('debugPanel').style.display = 'block';
+        }, 2000);
+    });
+
+    // Обработка событий Telegram
+    if (tg) {
+        tg.onEvent?.('web_app_data_sent', function() {
+            log('✅ ГЛОБАЛЬНОЕ СОБЫТИЕ: web_app_data_sent');
+            showNotification('✅ Данные отправлены (глобальное событие)');
+        });
+    }
+
+    // Глобальная обработка ошибок
+    window.addEventListener('error', function(event) {
+        log('❌ Глобальная ошибка:', event.error);
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+        log('❌ Отклонение промиса:', event.reason);
+    });
+
+    log('🚀 Web App скрипт полностью загружен');
+</script>
