@@ -428,6 +428,32 @@
             color: white;
         }
 
+        .connection-status.webapp {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Уведомления */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1001;
+            animation: slideIn 0.3s ease;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
         /* Адаптивность */
         @media (max-width: 768px) {
             .sidebar {
@@ -487,288 +513,373 @@
             font-size: 14px;
             opacity: 0.7;
         }
+
+        /* Индикатор WebApp режима */
+        .webapp-indicator {
+            position: fixed;
+            bottom: 16px;
+            left: 16px;
+            background: var(--accent);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Боковая панель с чатами -->
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <button class="new-chat-btn" onclick="createNewChat()">
-                    <span>✨</span>
-                    Новый чат
-                </button>
+<div class="app-container">
+    <!-- Боковая панель с чатами -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-btn" onclick="createNewChat()">
+                <span>✨</span>
+                Новый чат
+            </button>
+        </div>
+        <div class="chats-list" id="chatsList">
+            <!-- Список чатов будет здесь -->
+        </div>
+    </div>
+
+    <!-- Основная область -->
+    <div class="main-content">
+        <!-- Заголовок чата -->
+        <div class="chat-header">
+            <div>
+                <div class="chat-title" id="chatTitle">Выберите чат</div>
             </div>
-            <div class="chats-list" id="chatsList">
-                <!-- Список чатов будет здесь -->
+            <div class="chat-actions">
+                <button class="action-btn" onclick="clearCurrentChat()">🧹 Очистить</button>
+                <button class="action-btn" onclick="renameCurrentChat()">✏️ Переименовать</button>
+                <button class="action-btn" onclick="deleteCurrentChat()">🗑️ Удалить</button>
             </div>
         </div>
 
-        <!-- Основная область -->
-        <div class="main-content">
-            <!-- Заголовок чата -->
-            <div class="chat-header">
-                <div>
-                    <div class="chat-title" id="chatTitle">Выберите чат</div>
-                </div>
-                <div class="chat-actions">
-                    <button class="action-btn" onclick="clearCurrentChat()">🧹 Очистить</button>
-                    <button class="action-btn" onclick="renameCurrentChat()">✏️ Переименовать</button>
-                    <button class="action-btn" onclick="deleteCurrentChat()">🗑️ Удалить</button>
+        <!-- Сообщения -->
+        <div class="messages-container" id="messagesContainer">
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <div class="empty-title">Добро пожаловать в Gemini AI Assistant</div>
+                <div class="empty-description">
+                    Создайте новый чат или выберите существующий, чтобы начать общение с AI
                 </div>
             </div>
+        </div>
 
-            <!-- Сообщения -->
-            <div class="messages-container" id="messagesContainer">
-                <div class="empty-state">
-                    <div class="empty-icon">💬</div>
-                    <div class="empty-title">Добро пожаловать в Gemini AI Assistant</div>
-                    <div class="empty-description">
-                        Создайте новый чат или выберите существующий, чтобы начать общение
-                    </div>
-                </div>
-            </div>
-
-            <!-- Область ввода -->
-            <div class="input-area">
-                <div class="input-container">
-                    <div class="input-wrapper">
-                        <span class="input-icon">💭</span>
-                        <textarea
+        <!-- Область ввода -->
+        <div class="input-area">
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <span class="input-icon">💭</span>
+                    <textarea
                             class="message-input"
                             id="messageInput"
-                            placeholder="Напишите сообщение..."
+                            placeholder="Напишите сообщение AI..."
                             rows="1"
                             onkeypress="handleKeyPress(event)"
                             oninput="autoResize(this)"
-                        ></textarea>
-                    </div>
-                    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
-                        <span>📤</span>
-                    </button>
+                    ></textarea>
                 </div>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                    <span>📤</span>
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Статус подключения -->
-    <div class="connection-status connected" id="connectionStatus">
-        🟢 Подключено
-    </div>
+<!-- Статус подключения -->
+<div class="connection-status webapp" id="connectionStatus">
+    🌐 Web App режим
+</div>
 
-    <!-- Модальное окно для создания чата -->
-    <div class="modal" id="newChatModal">
-        <div class="modal-content">
-            <div class="modal-title">Создать новый чат</div>
-            <input type="text" class="modal-input" id="newChatName" placeholder="Название чата">
-            <div class="modal-actions">
-                <button class="modal-btn secondary" onclick="closeModal('newChatModal')">Отмена</button>
-                <button class="modal-btn primary" onclick="confirmNewChat()">Создать</button>
-            </div>
+<!-- Индикатор WebApp -->
+<div class="webapp-indicator" id="webappIndicator">
+    📱 Ответы в Telegram
+</div>
+
+<!-- Модальное окно для создания чата -->
+<div class="modal" id="newChatModal">
+    <div class="modal-content">
+        <div class="modal-title">Создать новый чат</div>
+        <input type="text" class="modal-input" id="newChatName" placeholder="Название чата">
+        <div class="modal-actions">
+            <button class="modal-btn secondary" onclick="closeModal('newChatModal')">Отмена</button>
+            <button class="modal-btn primary" onclick="confirmNewChat()">Создать</button>
         </div>
     </div>
+</div>
 
-    <!-- Модальное окно для переименования чата -->
-    <div class="modal" id="renameChatModal">
-        <div class="modal-content">
-            <div class="modal-title">Переименовать чат</div>
-            <input type="text" class="modal-input" id="renameChatName" placeholder="Новое название">
-            <div class="modal-actions">
-                <button class="modal-btn secondary" onclick="closeModal('renameChatModal')">Отмена</button>
-                <button class="modal-btn primary" onclick="confirmRenameChat()">Сохранить</button>
-            </div>
+<!-- Модальное окно для переименования чата -->
+<div class="modal" id="renameChatModal">
+    <div class="modal-content">
+        <div class="modal-title">Переименовать чат</div>
+        <input type="text" class="modal-input" id="renameChatName" placeholder="Новое название">
+        <div class="modal-actions">
+            <button class="modal-btn secondary" onclick="closeModal('renameChatModal')">Отмена</button>
+            <button class="modal-btn primary" onclick="confirmRenameChat()">Сохранить</button>
         </div>
     </div>
+</div>
 
-    <script>
-        // Telegram Web App инициализация
-        const tg = window.Telegram.WebApp;
+<script>
+    // Telegram Web App инициализация
+    const tg = window.Telegram?.WebApp;
+    let isTelegramWebApp = false;
+
+    // Проверяем доступность Telegram Web App
+    if (tg) {
         tg.ready();
         tg.expand();
+        isTelegramWebApp = true;
 
-        // Состояние приложения
-        let chats = [];
-        let currentChatId = null;
-        let messages = {};
+        // Темная тема по умолчанию
+        tg.setHeaderColor('#1a1a1a');
+        tg.setBackgroundColor('#1a1a1a');
+    }
 
-        // Инициализация
-        document.addEventListener('DOMContentLoaded', function() {
-            loadChats();
-            setupEventListeners();
+    // Состояние приложения
+    let chats = [];
+    let currentChatId = null;
+    let messages = {};
+    let userId = null;
+    let isDemo = false;
 
-            // Темная тема по умолчанию
-            tg.setHeaderColor('#1a1a1a');
-            tg.setBackgroundColor('#1a1a1a');
-        });
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeApp();
+        setupEventListeners();
+    });
 
-        // Загрузка чатов из localStorage или создание дефолтного
-        function loadChats() {
-            const savedChats = localStorage.getItem('gemini_chats');
-            const savedMessages = localStorage.getItem('gemini_messages');
-            const savedCurrentChat = localStorage.getItem('gemini_current_chat');
+    // Основная функция инициализации
+    function initializeApp() {
+        // Получаем данные пользователя из URL параметров
+        const urlParams = new URLSearchParams(window.location.search);
+        userId = urlParams.get('user_id');
+        const initialChatId = urlParams.get('chat_id');
 
-            if (savedChats) {
-                chats = JSON.parse(savedChats);
-                messages = JSON.parse(savedMessages) || {};
-                currentChatId = savedCurrentChat;
+        console.log('Инициализация приложения. User ID:', userId);
+
+        if (userId && isTelegramWebApp) {
+            // Режим интеграции с ботом
+            updateConnectionStatus('🤖 Интеграция с ботом', 'webapp');
+            loadUserData();
+            requestUserDataFromBot();
+        } else {
+            // Демо режим
+            isDemo = true;
+            updateConnectionStatus('📱 Демо режим', 'connected');
+            document.getElementById('webappIndicator').textContent = '🔄 Демо версия';
+            loadChatsDemo();
+        }
+    }
+
+    // Обновление статуса подключения
+    function updateConnectionStatus(text, type) {
+        const statusElement = document.getElementById('connectionStatus');
+        statusElement.textContent = text;
+        statusElement.className = `connection-status ${type}`;
+    }
+
+    // Запрос данных пользователя у бота
+    function requestUserDataFromBot() {
+        if (!userId || !isTelegramWebApp) return;
+
+        console.log('Запрос данных пользователя у бота...');
+
+        const requestData = {
+            type: 'get_user_data',
+            user_id: userId,
+            timestamp: new Date().toISOString()
+        };
+
+        sendDataToBot(requestData);
+    }
+
+    // Загрузка данных пользователя (интеграция с ботом)
+    function loadUserData() {
+        console.log('Загрузка пользовательских данных...');
+
+        // Пытаемся загрузить из localStorage (кэш)
+        const savedChats = localStorage.getItem(`gemini_chats_${userId}`);
+        const savedMessages = localStorage.getItem(`gemini_messages_${userId}`);
+        const savedCurrentChat = localStorage.getItem(`gemini_current_chat_${userId}`);
+
+        if (savedChats) {
+            chats = JSON.parse(savedChats);
+            messages = JSON.parse(savedMessages) || {};
+            currentChatId = savedCurrentChat;
+            console.log('Данные загружены из кэша:', chats.length, 'чатов');
+        } else {
+            // Создаем дефолтный чат
+            createDefaultChat();
+        }
+
+        renderChats();
+        if (currentChatId) {
+            selectChat(currentChatId);
+        }
+    }
+
+    // Загрузка в демо режиме
+    function loadChatsDemo() {
+        const savedChats = localStorage.getItem('gemini_chats_demo');
+        const savedMessages = localStorage.getItem('gemini_messages_demo');
+        const savedCurrentChat = localStorage.getItem('gemini_current_chat_demo');
+
+        if (savedChats) {
+            chats = JSON.parse(savedChats);
+            messages = JSON.parse(savedMessages) || {};
+            currentChatId = savedCurrentChat;
+        } else {
+            createDefaultChat();
+        }
+
+        renderChats();
+        if (currentChatId) {
+            selectChat(currentChatId);
+        }
+    }
+
+    // Создание дефолтного чата
+    function createDefaultChat() {
+        const defaultChat = {
+            id: 'chat_' + Date.now(),
+            name: 'Основной чат',
+            created: new Date().toISOString(),
+            lastMessage: '',
+            messageCount: 0
+        };
+        chats = [defaultChat];
+        messages = { [defaultChat.id]: [] };
+        currentChatId = defaultChat.id;
+        saveUserData();
+    }
+
+    // Сохранение данных пользователя
+    function saveUserData() {
+        try {
+            if (userId && !isDemo) {
+                localStorage.setItem(`gemini_chats_${userId}`, JSON.stringify(chats));
+                localStorage.setItem(`gemini_messages_${userId}`, JSON.stringify(messages));
+                localStorage.setItem(`gemini_current_chat_${userId}`, currentChatId);
             } else {
-                // Создаем дефолтный чат
-                const defaultChat = {
-                    id: 'chat_1',
-                    name: 'Основной чат',
-                    created: new Date().toISOString(),
-                    lastMessage: '',
-                    messageCount: 0
-                };
-                chats = [defaultChat];
-                messages = { 'chat_1': [] };
-                currentChatId = 'chat_1';
-                saveData();
+                localStorage.setItem('gemini_chats_demo', JSON.stringify(chats));
+                localStorage.setItem('gemini_messages_demo', JSON.stringify(messages));
+                localStorage.setItem('gemini_current_chat_demo', currentChatId);
             }
-
-            renderChats();
-            if (currentChatId) {
-                selectChat(currentChatId);
-            }
+        } catch (error) {
+            console.error('Ошибка сохранения данных:', error);
         }
+    }
 
-        // Сохранение данных
-        function saveData() {
-            localStorage.setItem('gemini_chats', JSON.stringify(chats));
-            localStorage.setItem('gemini_messages', JSON.stringify(messages));
-            localStorage.setItem('gemini_current_chat', currentChatId);
-        }
-
-        // Рендер списка чатов
-        function renderChats() {
-            const chatsList = document.getElementById('chatsList');
-            chatsList.innerHTML = '';
-
-            chats.forEach(chat => {
-                const chatElement = document.createElement('div');
-                chatElement.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
-                chatElement.onclick = () => selectChat(chat.id);
-
-                const lastMessage = chat.lastMessage || 'Нет сообщений';
-                const messagePreview = lastMessage.length > 50 ? lastMessage.substring(0, 50) + '...' : lastMessage;
-
-                chatElement.innerHTML = `
-                    <div class="chat-name">${chat.name}</div>
-                    <div class="chat-preview">${messagePreview}</div>
-                    <div class="chat-meta">
-                        <span>${chat.messageCount} сообщений</span>
-                        <span>${formatDate(chat.created)}</span>
-                    </div>
-                `;
-
-                chatsList.appendChild(chatElement);
-            });
-        }
-
-        // Выбор чата
-        function selectChat(chatId) {
-            currentChatId = chatId;
-            const chat = chats.find(c => c.id === chatId);
-
-            // Обновляем заголовок
-            document.getElementById('chatTitle').textContent = chat.name;
-
-            // Рендерим сообщения
-            renderMessages(chatId);
-
-            // Обновляем активный чат в списке
-            renderChats();
-
-            saveData();
-        }
-
-        // Рендер сообщений
-        function renderMessages(chatId) {
-            const container = document.getElementById('messagesContainer');
-            const chatMessages = messages[chatId] || [];
-
-            if (chatMessages.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">💬</div>
-                        <div class="empty-title">Начните общение</div>
-                        <div class="empty-description">
-                            Отправьте первое сообщение, чтобы начать диалог с AI
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = '';
-
-            chatMessages.forEach(message => {
-                const messageElement = createMessageElement(message);
-                container.appendChild(messageElement);
-            });
-
-            // Скроллим вниз
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // Создание элемента сообщения
-        function createMessageElement(message) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${message.sender}`;
-
-            const avatar = message.sender === 'user' ? '👤' : '🤖';
-            const time = formatTime(message.timestamp);
-
-            let content = `<div class="message-text">${message.text}</div>`;
-
-            // Если есть изображение
-            if (message.image) {
-                content = `
-                    <div class="image-message">
-                        <img src="${message.image}" alt="Generated image" />
-                    </div>
-                    ${message.text ? `<div class="message-text">${message.text}</div>` : ''}
-                `;
-            }
-
-            messageDiv.innerHTML = `
-                <div class="message-avatar">${avatar}</div>
-                <div class="message-content">
-                    ${content}
-                    <div class="message-time">${time}</div>
-                </div>
-            `;
-
-            return messageDiv;
-        }
-
-        // Отправка сообщения
-        async function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-
-            if (!text || !currentChatId) return;
-
-            // Добавляем сообщение пользователя
-            const userMessage = {
-                id: Date.now().toString(),
-                sender: 'user',
-                text: text,
-                timestamp: new Date().toISOString()
-            };
-
-            addMessageToChat(currentChatId, userMessage);
-            input.value = '';
-            autoResize(input);
-
-            // Показываем индикатор печати
-            showTypingIndicator();
-
+    // Главная функция отправки сообщения боту
+    async function sendToBot(text) {
+        return new Promise((resolve, reject) => {
             try {
-                // Отправляем через Telegram Web App
-                const response = await sendToBot(text);
+                if (!isTelegramWebApp) {
+                    throw new Error('Telegram Web App недоступен');
+                }
 
-                // Добавляем ответ бота
+                // Создаем объект данных для отправки боту
+                const messageData = {
+                    type: 'send_message',
+                    user_id: userId,
+                    message: text,
+                    chat_id: currentChatId,
+                    timestamp: new Date().toISOString()
+                };
+
+                console.log('Отправка сообщения боту:', messageData);
+
+                // Отправляем данные через Telegram Web App API
+                tg.sendData(JSON.stringify(messageData));
+
+                // Уведомляем пользователя
+                showNotification('✅ Сообщение отправлено в бот!\nОтвет придет в Telegram.');
+
+                resolve({
+                    text: '✅ Сообщение отправлено в бот. Ответ придет в Telegram.',
+                    sent_to_bot: true
+                });
+
+            } catch (error) {
+                console.error('Ошибка отправки сообщения боту:', error);
+                reject(error);
+            }
+        });
+    }
+
+    // Демо функция для тестирования без бота
+    async function sendToBotDemo(text) {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                // Имитируем разные типы ответов
+                const responses = [
+                    `🤖 Привет! Ты написал: "${text}". Это демо-режим веб-приложения.`,
+                    `💡 Интересный вопрос! В полной версии Gemini AI даст подробный ответ на: "${text}"`,
+                    `🎯 В реальном режиме бот обработает твой запрос: "${text}" и пришлет ответ в Telegram.`,
+                    `✨ Демо ответ на "${text}". Попробуй создать новые чаты и поэкспериментировать с интерфейсом!`
+                ];
+
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+
+                resolve({
+                    text: randomResponse,
+                    image: null
+                });
+            }, 1000 + Math.random() * 2000);
+        });
+    }
+
+    // Обновленная функция отправки сообщения
+    async function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const text = input.value.trim();
+
+        if (!text || !currentChatId) {
+            showNotification('⚠️ Введите сообщение');
+            return;
+        }
+
+        // Добавляем сообщение пользователя
+        const userMessage = {
+            id: Date.now().toString(),
+            sender: 'user',
+            text: text,
+            timestamp: new Date().toISOString()
+        };
+
+        addMessageToChat(currentChatId, userMessage);
+        input.value = '';
+        autoResize(input);
+
+        // Показываем индикатор печати
+        showTypingIndicator();
+
+        try {
+            let response;
+
+            if (!isDemo && userId && isTelegramWebApp) {
+                // Реальный режим - отправляем боту
+                response = await sendToBot(text);
+
+                // Добавляем уведомление о том, что сообщение отправлено
+                const botMessage = {
+                    id: (Date.now() + 1).toString(),
+                    sender: 'assistant',
+                    text: response.text,
+                    timestamp: new Date().toISOString(),
+                    sent_to_bot: true
+                };
+
+                addMessageToChat(currentChatId, botMessage);
+            } else {
+                // Демо режим
+                response = await sendToBotDemo(text);
+
                 const botMessage = {
                     id: (Date.now() + 1).toString(),
                     sender: 'assistant',
@@ -778,68 +889,187 @@
                 };
 
                 addMessageToChat(currentChatId, botMessage);
-
-            } catch (error) {
-                console.error('Error sending message:', error);
-
-                const errorMessage = {
-                    id: (Date.now() + 1).toString(),
-                    sender: 'assistant',
-                    text: '😔 Произошла ошибка при отправке сообщения. Попробуйте еще раз.',
-                    timestamp: new Date().toISOString()
-                };
-
-                addMessageToChat(currentChatId, errorMessage);
-            } finally {
-                hideTypingIndicator();
             }
+
+        } catch (error) {
+            console.error('Ошибка отправки сообщения:', error);
+
+            const errorMessage = {
+                id: (Date.now() + 1).toString(),
+                sender: 'assistant',
+                text: '😔 Произошла ошибка при отправке сообщения. Попробуйте еще раз.',
+                timestamp: new Date().toISOString()
+            };
+
+            addMessageToChat(currentChatId, errorMessage);
+            showNotification('❌ Ошибка отправки сообщения');
+        } finally {
+            hideTypingIndicator();
+        }
+    }
+
+    // Добавление сообщения в чат
+    function addMessageToChat(chatId, message) {
+        if (!messages[chatId]) {
+            messages[chatId] = [];
         }
 
-        // Добавление сообщения в чат
-        function addMessageToChat(chatId, message) {
-            if (!messages[chatId]) {
-                messages[chatId] = [];
-            }
+        messages[chatId].push(message);
 
-            messages[chatId].push(message);
+        // Обновляем информацию о чате
+        const chat = chats.find(c => c.id === chatId);
+        if (chat) {
+            chat.lastMessage = message.text.length > 50 ?
+                message.text.substring(0, 50) + '...' : message.text;
+            chat.messageCount = messages[chatId].length;
+        }
 
-            // Обновляем информацию о чате
-            const chat = chats.find(c => c.id === chatId);
-            if (chat) {
-                chat.lastMessage = message.text;
-                chat.messageCount = messages[chatId].length;
-            }
-
-            // Рендерим сообщения и чаты
+        // Рендерим сообщения и чаты
+        if (chatId === currentChatId) {
             renderMessages(chatId);
-            renderChats();
-            saveData();
+        }
+        renderChats();
+        saveUserData();
+    }
+
+    // Рендер списка чатов
+    function renderChats() {
+        const chatsList = document.getElementById('chatsList');
+        chatsList.innerHTML = '';
+
+        chats.forEach(chat => {
+            const chatElement = document.createElement('div');
+            chatElement.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
+            chatElement.onclick = () => selectChat(chat.id);
+
+            const lastMessage = chat.lastMessage || 'Нет сообщений';
+            const messagePreview = lastMessage.length > 50 ? lastMessage.substring(0, 50) + '...' : lastMessage;
+
+            chatElement.innerHTML = `
+                    <div class="chat-name">${chat.name}</div>
+                    <div class="chat-preview">${messagePreview}</div>
+                    <div class="chat-meta">
+                        <span>${chat.messageCount} сообщений</span>
+                        <span>${formatDate(chat.created)}</span>
+                    </div>
+                `;
+
+            chatsList.appendChild(chatElement);
+        });
+    }
+
+    // Выбор чата
+    function selectChat(chatId) {
+        currentChatId = chatId;
+        const chat = chats.find(c => c.id === chatId);
+
+        // Обновляем заголовок
+        document.getElementById('chatTitle').textContent = chat.name;
+
+        // Рендерим сообщения
+        renderMessages(chatId);
+
+        // Обновляем активный чат в списке
+        renderChats();
+
+        saveUserData();
+
+        // Уведомляем бот о переключении чата (если не демо)
+        if (!isDemo && userId && isTelegramWebApp) {
+            const switchData = {
+                type: 'switch_chat',
+                user_id: userId,
+                chat_id: chatId,
+                timestamp: new Date().toISOString()
+            };
+            sendDataToBot(switchData);
+        }
+    }
+
+    // Рендер сообщений
+    function renderMessages(chatId) {
+        const container = document.getElementById('messagesContainer');
+        const chatMessages = messages[chatId] || [];
+
+        if (chatMessages.length === 0) {
+            container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">💬</div>
+                        <div class="empty-title">Начните общение с AI</div>
+                        <div class="empty-description">
+                            Отправьте первое сообщение, чтобы начать диалог с Gemini AI
+                        </div>
+                    </div>
+                `;
+            return;
         }
 
-        // Отправка сообщения боту
-        async function sendToBot(text) {
-            // В реальном приложении здесь будет вызов бота
-            // Пока возвращаем mock ответ
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve({
-                        text: `Это ответ на ваше сообщение: "${text}". Я обработаю ваш запрос через телеграм-бота!`,
-                        image: null
-                    });
-                }, 1000 + Math.random() * 2000);
-            });
+        container.innerHTML = '';
+
+        chatMessages.forEach(message => {
+            const messageElement = createMessageElement(message);
+            container.appendChild(messageElement);
+        });
+
+        // Скроллим вниз
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // Создание элемента сообщения
+    function createMessageElement(message) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${message.sender}`;
+
+        const avatar = message.sender === 'user' ? '👤' : '🤖';
+        const time = formatTime(message.timestamp);
+
+        let content = `<div class="message-text">${message.text}</div>`;
+
+        // Если есть изображение
+        if (message.image) {
+            content = `
+                    <div class="image-message">
+                        <img src="${message.image}" alt="Generated image" />
+                    </div>
+                    ${message.text ? `<div class="message-text">${message.text}</div>` : ''}
+                `;
         }
 
-        // Индикатор печати
-        function showTypingIndicator() {
-            const container = document.getElementById('messagesContainer');
-            const indicator = document.createElement('div');
-            indicator.className = 'message assistant';
-            indicator.id = 'typingIndicator';
-            indicator.innerHTML = `
+        // Добавляем индикатор отправки в бот
+        let statusIndicator = '';
+        if (message.sent_to_bot) {
+            statusIndicator = '<div style="font-size: 11px; color: #4caf50; margin-top: 4px;">📤 Отправлено в бот</div>';
+        }
+
+        messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">
+                    ${content}
+                    <div class="message-time">${time}</div>
+                    ${statusIndicator}
+                </div>
+            `;
+
+        return messageDiv;
+    }
+
+    // Индикатор печати
+    function showTypingIndicator() {
+        const container = document.getElementById('messagesContainer');
+
+        // Удаляем существующий индикатор
+        const existingIndicator = document.getElementById('typingIndicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+
+        const indicator = document.createElement('div');
+        indicator.className = 'message assistant';
+        indicator.id = 'typingIndicator';
+        indicator.innerHTML = `
                 <div class="message-avatar">🤖</div>
                 <div class="typing-indicator">
-                    <span>Печатает</span>
+                    <span>${isDemo ? 'Генерирую ответ' : 'Отправляю в бот'}...</span>
                     <div class="typing-dots">
                         <span class="typing-dot"></span>
                         <span class="typing-dot"></span>
@@ -848,167 +1078,250 @@
                 </div>
             `;
 
-            container.appendChild(indicator);
-            container.scrollTop = container.scrollHeight;
+        container.appendChild(indicator);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+        const indicator = document.getElementById('typingIndicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    // Создание нового чата
+    function createNewChat() {
+        document.getElementById('newChatModal').style.display = 'flex';
+        document.getElementById('newChatName').focus();
+    }
+
+    function confirmNewChat() {
+        const name = document.getElementById('newChatName').value.trim();
+        if (!name) {
+            showNotification('⚠️ Введите название чата');
+            return;
         }
 
-        function hideTypingIndicator() {
-            const indicator = document.getElementById('typingIndicator');
-            if (indicator) {
-                indicator.remove();
-            }
-        }
+        const newChat = {
+            id: 'chat_' + Date.now(),
+            name: name,
+            created: new Date().toISOString(),
+            lastMessage: '',
+            messageCount: 0
+        };
 
-        // Создание нового чата
-        function createNewChat() {
-            document.getElementById('newChatModal').style.display = 'flex';
-            document.getElementById('newChatName').focus();
-        }
+        chats.push(newChat);
+        messages[newChat.id] = [];
+        currentChatId = newChat.id;
 
-        function confirmNewChat() {
-            const name = document.getElementById('newChatName').value.trim();
-            if (!name) return;
+        renderChats();
+        selectChat(newChat.id);
+        closeModal('newChatModal');
+        document.getElementById('newChatName').value = '';
 
-            const newChat = {
-                id: 'chat_' + Date.now(),
-                name: name,
-                created: new Date().toISOString(),
-                lastMessage: '',
-                messageCount: 0
+        saveUserData();
+
+        // Уведомляем бот о создании нового чата (если не демо)
+        if (!isDemo && userId && isTelegramWebApp) {
+            const chatData = {
+                type: 'create_chat',
+                user_id: userId,
+                chat_id: newChat.id,
+                chat_name: name,
+                timestamp: new Date().toISOString()
             };
+            sendDataToBot(chatData);
+        }
 
-            chats.push(newChat);
-            messages[newChat.id] = [];
-            currentChatId = newChat.id;
+        showNotification(`✨ Чат "${name}" создан!`);
+    }
 
+    // Переименование чата
+    function renameCurrentChat() {
+        if (!currentChatId) return;
+        const chat = chats.find(c => c.id === currentChatId);
+        document.getElementById('renameChatName').value = chat.name;
+        document.getElementById('renameChatModal').style.display = 'flex';
+        document.getElementById('renameChatName').focus();
+    }
+
+    function confirmRenameChat() {
+        const newName = document.getElementById('renameChatName').value.trim();
+        if (!newName || !currentChatId) {
+            showNotification('⚠️ Введите новое название');
+            return;
+        }
+
+        const chat = chats.find(c => c.id === currentChatId);
+        const oldName = chat.name;
+        chat.name = newName;
+
+        document.getElementById('chatTitle').textContent = newName;
+        renderChats();
+        closeModal('renameChatModal');
+        saveUserData();
+
+        showNotification(`✏️ Чат переименован: "${oldName}" → "${newName}"`);
+    }
+
+    // Удаление чата
+    function deleteCurrentChat() {
+        if (!currentChatId || chats.length <= 1) {
+            showNotification('❌ Нельзя удалить последний чат');
+            return;
+        }
+
+        const chat = chats.find(c => c.id === currentChatId);
+        const confirmDelete = confirm(`Вы уверены, что хотите удалить чат "${chat.name}"?\n\nВсе сообщения будут потеряны навсегда.`);
+
+        if (confirmDelete) {
+            const chatName = chat.name;
+
+            // Удаляем чат и его сообщения
+            chats = chats.filter(c => c.id !== currentChatId);
+            delete messages[currentChatId];
+
+            // Переключаемся на первый доступный чат
+            currentChatId = chats[0].id;
+            selectChat(currentChatId);
+            saveUserData();
+
+            showNotification(`🗑️ Чат "${chatName}" удален`);
+        }
+    }
+
+    // Очистка чата
+    function clearCurrentChat() {
+        if (!currentChatId) return;
+
+        const chat = chats.find(c => c.id === currentChatId);
+        const confirmClear = confirm(`Очистить историю сообщений в чате "${chat.name}"?\n\nВсе сообщения будут удалены.`);
+
+        if (confirmClear) {
+            messages[currentChatId] = [];
+            chat.lastMessage = '';
+            chat.messageCount = 0;
+
+            renderMessages(currentChatId);
             renderChats();
-            selectChat(newChat.id);
-            closeModal('newChatModal');
-            document.getElementById('newChatName').value = '';
+            saveUserData();
 
-            saveData();
+            showNotification(`🧹 Чат "${chat.name}" очищен`);
         }
+    }
 
-        // Переименование чата
-        function renameCurrentChat() {
-            if (!currentChatId) return;
-            const chat = chats.find(c => c.id === currentChatId);
-            document.getElementById('renameChatName').value = chat.name;
-            document.getElementById('renameChatModal').style.display = 'flex';
-            document.getElementById('renameChatName').focus();
-        }
-
-        function confirmRenameChat() {
-            const newName = document.getElementById('renameChatName').value.trim();
-            if (!newName || !currentChatId) return;
-
-            const chat = chats.find(c => c.id === currentChatId);
-            chat.name = newName;
-
-            document.getElementById('chatTitle').textContent = newName;
-            renderChats();
-            closeModal('renameChatModal');
-
-            saveData();
-        }
-
-        // Удаление чата
-        function deleteCurrentChat() {
-            if (!currentChatId || chats.length <= 1) {
-                tg.showAlert('Нельзя удалить последний чат');
-                return;
+    // Отправка данных через Telegram Web App
+    function sendDataToBot(data) {
+        try {
+            if (isTelegramWebApp && tg && tg.sendData) {
+                console.log('Отправка данных боту:', data);
+                tg.sendData(JSON.stringify(data));
+            } else {
+                console.log('Telegram Web App недоступен, данные:', data);
             }
-
-            tg.showConfirm('Вы уверены, что хотите удалить этот чат?', (confirmed) => {
-                if (confirmed) {
-                    chats = chats.filter(c => c.id !== currentChatId);
-                    delete messages[currentChatId];
-
-                    currentChatId = chats[0].id;
-                    renderChats();
-                    selectChat(currentChatId);
-
-                    saveData();
-                }
-            });
+        } catch (error) {
+            console.error('Ошибка отправки данных:', error);
         }
+    }
 
-        // Очистка чата
-        function clearCurrentChat() {
-            if (!currentChatId) return;
+    // Уведомления для пользователя
+    function showNotification(message) {
+        // Удаляем существующие уведомления
+        const existingNotifications = document.querySelectorAll('.notification');
+        existingNotifications.forEach(notif => notif.remove());
 
-            tg.showConfirm('Очистить историю сообщений в этом чате?', (confirmed) => {
-                if (confirmed) {
-                    messages[currentChatId] = [];
-                    const chat = chats.find(c => c.id === currentChatId);
-                    chat.lastMessage = '';
-                    chat.messageCount = 0;
+        // Создаем новое уведомление
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.textContent = message;
 
-                    renderMessages(currentChatId);
-                    renderChats();
-                    saveData();
-                }
-            });
-        }
+        document.body.appendChild(notification);
 
-        // Утилиты
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-
-        function formatDate(isoString) {
-            const date = new Date(isoString);
-            return date.toLocaleDateString('ru-RU');
-        }
-
-        function formatTime(isoString) {
-            const date = new Date(isoString);
-            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-        }
-
-        function autoResize(textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-        }
-
-        function handleKeyPress(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
+        // Удаляем уведомление через 4 секунды
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
             }
+        }, 4000);
+    }
+
+    // Утилиты
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    function formatDate(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleDateString('ru-RU');
+    }
+
+    function formatTime(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
         }
+    }
 
-        function setupEventListeners() {
-            // Закрытие модальных окон по клику вне них
-            document.addEventListener('click', function(event) {
-                if (event.target.classList.contains('modal')) {
-                    event.target.style.display = 'none';
-                }
-            });
-
-            // Enter в модальных окнах
-            document.getElementById('newChatName').addEventListener('keypress', function(event) {
-                if (event.key === 'Enter') {
-                    confirmNewChat();
-                }
-            });
-
-            document.getElementById('renameChatName').addEventListener('keypress', function(event) {
-                if (event.key === 'Enter') {
-                    confirmRenameChat();
-                }
-            });
-        }
-
-        // Отправка данных через Telegram
-        function sendDataToBot(data) {
-            tg.sendData(JSON.stringify(data));
-        }
-
-        // Обработка данных от бота
-        tg.onEvent('web_app_data_sent', function() {
-            tg.close();
+    function setupEventListeners() {
+        // Закрытие модальных окон по клику вне них
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
         });
-    </script>
+
+        // Enter в модальных окнах
+        document.getElementById('newChatName').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                confirmNewChat();
+            }
+        });
+
+        document.getElementById('renameChatName').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                confirmRenameChat();
+            }
+        });
+
+        // Обработка закрытия Web App
+        if (isTelegramWebApp) {
+            tg.onEvent('web_app_data_sent', function() {
+                console.log('Данные успешно отправлены боту');
+                // tg.close(); // Не закрываем сразу, пусть пользователь видит интерфейс
+            });
+        }
+
+        console.log('Event listeners настроены');
+    }
+
+    // Дополнительные функции для отладки
+    window.debugInfo = function() {
+        console.log('Debug Info:');
+        console.log('User ID:', userId);
+        console.log('Is Demo:', isDemo);
+        console.log('Telegram WebApp available:', isTelegramWebApp);
+        console.log('Current Chat ID:', currentChatId);
+        console.log('Chats count:', chats.length);
+        console.log('Messages:', Object.keys(messages).length, 'chats with messages');
+    };
+
+    // Показываем отладочную информацию при загрузке
+    setTimeout(() => {
+        console.log('🚀 Gemini AI Assistant Web App загружен');
+        console.log('Режим:', isDemo ? 'Демо' : 'Интеграция с ботом');
+        console.log('User ID:', userId || 'Не задан');
+        console.log('Telegram Web App:', isTelegramWebApp ? 'Доступен' : 'Недоступен');
+    }, 1000);
+</script>
 </body>
 </html>
