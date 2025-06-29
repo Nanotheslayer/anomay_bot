@@ -580,15 +580,53 @@
         }
     }
 
-    // Супер-тест
-    function testConnection() {
+    // Определение типа Web App
+    function getWebAppType() {
+        // Если есть initData - это Keyboard Web App
+        if (window.Telegram?.WebApp?.initData) {
+            return 'keyboard';
+        }
+
+        // Если нет initData но есть WebApp - это Main Mini App
+        if (window.Telegram?.WebApp) {
+            return 'main';
+        }
+
+        return 'unknown';
+    }
+
+    // Универсальная отправка данных
+    async function sendDataUniversal(data) {
+        const webAppType = getWebAppType();
+        log('🔍 Тип Web App:', webAppType);
+
+        if (webAppType === 'keyboard') {
+            // Keyboard Web App - используем sendData()
+            log('📡 Используем sendData() для Keyboard Web App');
+            return sendDataToBot(data);
+
+        } else if (webAppType === 'main') {
+            // Main Mini App - используем HTTP API
+            log('📡 Используем HTTP API для Main Mini App');
+            return await sendToTelegramAPI(data);
+
+        } else {
+            log('❌ Неизвестный тип Web App');
+            return false;
+        }
+    }
+
+    // Супер-тест с универсальной отправкой
+    async function testConnection() {
         log('🧪 ЗАПУСК СУПЕР-ТЕСТА СОЕДИНЕНИЯ');
 
+        const webAppType = getWebAppType();
         const testData = {
             type: 'test_connection',
             user_id: userId,
             timestamp: new Date().toISOString(),
             test_message: '🧪 КРИТИЧЕСКИЙ ТЕСТ ОТ WEB APP',
+            webapp_type: webAppType,
             webapp_info: {
                 url: window.location.href,
                 userAgent: navigator.userAgent.substring(0, 100),
@@ -604,14 +642,55 @@
 
         log('🧪 Отправляю тестовые данные:', testData);
 
-        const success = sendDataToBot(testData);
+        const success = await sendDataUniversal(testData);
 
         log('🧪 Результат отправки теста:', success);
 
         if (success) {
-            showNotification('🧪 Тест отправлен! Ждите ответ в боте...');
+            showNotification(`🧪 Тест отправлен через ${webAppType}!`);
         } else {
             showNotification('❌ Тест не удался! См. консоль');
+        }
+    }
+
+    // HTTP отправка для Main Mini App
+    async function sendToTelegramAPI(data) {
+        const BOT_TOKEN = '7877142948:AAFtQ9Gh4MJmWHdTS2mNi9QxNKtw8qNuPms';
+
+        try {
+            let messageText;
+            if (data.type === 'send_message') {
+                messageText = `📱 **Сообщение из Web App:**\n\n${data.message}`;
+            } else {
+                messageText = `📱 **Web App данные:**\n\n\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``;
+            }
+
+            const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: userId,
+                    text: messageText,
+                    parse_mode: 'Markdown'
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                log('✅ HTTP API успешно:', result);
+                showNotification('✅ Отправлено через HTTP API!');
+                return true;
+            } else {
+                const error = await response.text();
+                log('❌ HTTP API ошибка:', error);
+                showNotification('❌ Ошибка HTTP API');
+                return false;
+            }
+
+        } catch (error) {
+            log('❌ HTTP исключение:', error);
+            showNotification('❌ Ошибка отправки');
+            return false;
         }
     }
 
@@ -683,7 +762,7 @@
         }
     }
 
-    // Инициализация приложения
+    // Инициализация приложения - ИСПРАВЛЕННАЯ
     function initializeApp() {
         log('🚀 ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ');
 
@@ -698,49 +777,45 @@
         // Инициализируем Telegram
         const telegramOk = initTelegramWebApp();
 
+        // Пытаемся получить userId из разных источников
+        if (!userId && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+            userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+            log('✅ User ID из Telegram initDataUnsafe:', userId);
+        }
+
         log('🔍 ПРОВЕРКА РЕЖИМА:', {
             telegramOk: telegramOk,
             userId: userId,
             hasTelegram: !!window.Telegram?.WebApp,
             hasInitData: !!window.Telegram?.WebApp?.initData,
-            url: window.location.href
+            url: window.location.href,
+            urlParams: Object.fromEntries(urlParams.entries())
         });
 
-        // ИЗМЕНЕННАЯ ЛОГИКА: более мягкие условия
-        if (userId && window.Telegram?.WebApp) {
-            // Если есть userId и Telegram WebApp объект - пробуем режим бота
+        // ПРИНУДИТЕЛЬНО АКТИВИРУЕМ РЕЖИМ БОТА если есть Telegram WebApp
+        if (window.Telegram?.WebApp && (userId || window.Telegram.WebApp.initDataUnsafe?.user)) {
+            // Принудительно устанавливаем userId если его нет
+            if (!userId && window.Telegram.WebApp.initDataUnsafe?.user?.id) {
+                userId = window.Telegram.WebApp.initDataUnsafe.user.id.toString();
+            }
+
             isDemo = false;
-            log('✅ РЕЖИМ: ИНТЕГРАЦИЯ С БОТОМ (по userId + WebApp)');
+            log('✅ РЕЖИМ: ПРИНУДИТЕЛЬНО АКТИВИРОВАН РЕЖИМ БОТА');
             updateStatusIndicator('БОТ', 'status-bot');
 
-            // Отправляем ready сигнал
-            setTimeout(() => {
-                sendReadySignal();
-            }, 1000);
+            // УБИРАЕМ АВТОМАТИЧЕСКУЮ ОТПРАВКУ ready сигнала
+            // setTimeout(() => {
+            //     sendReadySignal();
+            // }, 1000);
 
-        } else if (window.Telegram?.WebApp) {
-            // Если есть только WebApp но нет userId - пробуем получить из Telegram
-            const telegramUserId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-            if (telegramUserId) {
-                userId = telegramUserId.toString();
-                isDemo = false;
-                log('✅ РЕЖИМ: ИНТЕГРАЦИЯ С БОТОМ (по Telegram userId)');
-                updateStatusIndicator('БОТ', 'status-bot');
+            log('📱 Web App готов, НЕ отправляем автоматический ready сигнал');
+            showNotification('✅ Web App подключен к боту!');
 
-                setTimeout(() => {
-                    sendReadySignal();
-                }, 1000);
-            } else {
-                isDemo = true;
-                log('⚠️ РЕЖИМ: ДЕМО (нет userId)');
-                updateStatusIndicator('ДЕМО', 'status-demo');
-                showNotification('📱 Демо режим: нет User ID');
-            }
         } else {
             isDemo = true;
-            log('⚠️ РЕЖИМ: ДЕМО (нет Telegram WebApp)');
+            log('⚠️ РЕЖИМ: ДЕМО (нет условий для режима бота)');
             updateStatusIndicator('ДЕМО', 'status-demo');
-            showNotification('📱 Демо режим: откройте через Telegram бот');
+            showNotification('📱 Демо режим');
         }
 
         loadInitialData();
@@ -794,25 +869,34 @@
                 };
 
                 log('📤 Отправляю сообщение боту:', messageData);
-                const success = sendDataToBot(messageData);
 
-                if (success) {
-                    showNotification('📡 Сообщение отправлено боту!');
-
-                    setTimeout(() => {
+                const webAppType = getWebAppType();
+                if (webAppType === 'keyboard') {
+                    // Keyboard Web App - предупреждаем о закрытии
+                    showNotification('⚠️ Web App закроется после отправки!');
+                    setTimeout(async () => {
+                        const success = await sendDataUniversal(messageData);
+                        if (success) {
+                            log('✅ Сообщение отправлено через sendData(), Web App закроется');
+                        }
+                    }, 2000);
+                } else {
+                    // Main Mini App - остается открытым
+                    const success = await sendDataUniversal(messageData);
+                    if (success) {
+                        hideTypingIndicator();
                         const statusMessage = {
                             id: (Date.now() + 1).toString(),
                             sender: 'assistant',
-                            text: '⏳ Запрос отправлен боту. Ответ появится в Telegram чате.',
+                            text: '✅ Сообщение отправлено через HTTP API! Web App остается открытым.',
                             timestamp: new Date().toISOString()
                         };
                         addMessage(statusMessage);
-                        hideTypingIndicator();
-                    }, 2000);
-
-                } else {
-                    throw new Error('Не удалось отправить');
+                    } else {
+                        throw new Error('Не удалось отправить');
+                    }
                 }
+
             } else {
                 // Демо ответ
                 setTimeout(() => {
