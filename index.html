@@ -580,18 +580,28 @@
         }
     }
 
-    // Определение типа Web App
+    // Определение типа Web App - ИСПРАВЛЕННАЯ ЛОГИКА
     function getWebAppType() {
-        // Если есть initData - это Keyboard Web App
-        if (window.Telegram?.WebApp?.initData) {
+        // Проверяем URL параметры - если есть test=1, значит это Keyboard Web App
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('test') === '1') {
+            log('🔘 Определен как Keyboard Web App по параметру test=1');
             return 'keyboard';
         }
 
-        // Если нет initData но есть WebApp - это Main Mini App
+        // Если есть initData - это точно Keyboard Web App
+        if (window.Telegram?.WebApp?.initData) {
+            log('🔘 Определен как Keyboard Web App по initData');
+            return 'keyboard';
+        }
+
+        // Если нет initData и нет test параметра - это Main Mini App
         if (window.Telegram?.WebApp) {
+            log('🔗 Определен как Main Mini App');
             return 'main';
         }
 
+        log('❓ Неизвестный тип Web App');
         return 'unknown';
     }
 
