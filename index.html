@@ -595,7 +595,7 @@
         return 'unknown';
     }
 
-    // Универсальная отправка данных
+    // Универсальная отправка данных - ИСПРАВЛЕННАЯ
     async function sendDataUniversal(data) {
         const webAppType = getWebAppType();
         log('🔍 Тип Web App:', webAppType);
@@ -606,12 +606,24 @@
             return sendDataToBot(data);
 
         } else if (webAppType === 'main') {
-            // Main Mini App - используем HTTP API
-            log('📡 Используем HTTP API для Main Mini App');
-            return await sendToTelegramAPI(data);
+            // Main Mini App - показываем ошибку, что нужно использовать Keyboard
+            log('❌ Main Mini App не поддерживает отправку данных боту');
+            showNotification('❌ Для отправки сообщений используйте кнопку в боте!');
+
+            // Показываем инструкцию
+            const instructionMessage = {
+                id: Date.now().toString(),
+                sender: 'assistant',
+                text: '❌ Main Mini App не может отправлять данные боту.\n\n✅ Используйте кнопку "🧪 Тест Web App" в боте для отправки сообщений.',
+                timestamp: new Date().toISOString()
+            };
+            addMessage(instructionMessage);
+
+            return false;
 
         } else {
             log('❌ Неизвестный тип Web App');
+            showNotification('❌ Откройте через Telegram бот');
             return false;
         }
     }
@@ -861,6 +873,22 @@
 
         try {
             if (!isDemo) {
+                const webAppType = getWebAppType();
+
+                if (webAppType !== 'keyboard') {
+                    // Только Keyboard Web App может отправлять данные
+                    hideTypingIndicator();
+                    const errorMessage = {
+                        id: (Date.now() + 1).toString(),
+                        sender: 'assistant',
+                        text: '❌ Отправка сообщений доступна только через кнопку в боте!\n\n🔄 Используйте /testweb → "🧪 Тест Web App"',
+                        timestamp: new Date().toISOString()
+                    };
+                    addMessage(errorMessage);
+                    showNotification('❌ Используйте кнопку в боте!');
+                    return;
+                }
+
                 const messageData = {
                     type: 'send_message',
                     user_id: userId,
@@ -868,34 +896,26 @@
                     timestamp: new Date().toISOString()
                 };
 
-                log('📤 Отправляю сообщение боту:', messageData);
+                log('📤 Отправляю сообщение боту через Keyboard Web App:', messageData);
 
-                const webAppType = getWebAppType();
-                if (webAppType === 'keyboard') {
-                    // Keyboard Web App - предупреждаем о закрытии
-                    showNotification('⚠️ Web App закроется после отправки!');
-                    setTimeout(async () => {
-                        const success = await sendDataUniversal(messageData);
-                        if (success) {
-                            log('✅ Сообщение отправлено через sendData(), Web App закроется');
-                        }
-                    }, 2000);
-                } else {
-                    // Main Mini App - остается открытым
+                // Keyboard Web App - предупреждаем о закрытии
+                showNotification('⚠️ Web App закроется после отправки!');
+                setTimeout(async () => {
                     const success = await sendDataUniversal(messageData);
                     if (success) {
+                        log('✅ Сообщение отправлено через sendData(), Web App закроется');
+                    } else {
                         hideTypingIndicator();
-                        const statusMessage = {
+                        const errorMessage = {
                             id: (Date.now() + 1).toString(),
                             sender: 'assistant',
-                            text: '✅ Сообщение отправлено через HTTP API! Web App остается открытым.',
+                            text: '😔 Ошибка отправки.',
                             timestamp: new Date().toISOString()
                         };
-                        addMessage(statusMessage);
-                    } else {
-                        throw new Error('Не удалось отправить');
+                        addMessage(errorMessage);
+                        showNotification('❌ Ошибка отправки');
                     }
-                }
+                }, 2000);
 
             } else {
                 // Демо ответ
@@ -942,6 +962,27 @@
                 timestamp: new Date().toISOString()
             };
             addMessage(welcomeMessage);
+        } else {
+            // Проверяем тип Web App и показываем соответствующее сообщение
+            const webAppType = getWebAppType();
+
+            if (webAppType === 'main') {
+                const infoMessage = {
+                    id: 'info',
+                    sender: 'assistant',
+                    text: '📱 Main Mini App режим\n\n⚠️ Для отправки сообщений боту используйте команду /testweb в боте и нажмите кнопку клавиатуры.\n\n🔍 Здесь можно только просматривать интерфейс.',
+                    timestamp: new Date().toISOString()
+                };
+                addMessage(infoMessage);
+            } else if (webAppType === 'keyboard') {
+                const readyMessage = {
+                    id: 'ready',
+                    sender: 'assistant',
+                    text: '✅ Keyboard Web App подключен!\n\n💬 Отправьте сообщение - оно будет передано боту через sendData().',
+                    timestamp: new Date().toISOString()
+                };
+                addMessage(readyMessage);
+            }
         }
     }
 
